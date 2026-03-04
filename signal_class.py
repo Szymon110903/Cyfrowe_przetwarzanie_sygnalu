@@ -2,6 +2,11 @@ import numpy as np
 from plots import *
 from signals import *
 
+""""
+Klasa reprezentująca sygnał, która przechowuje jego parametry, generuje sygnał.
+W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwantowanie, analiza sygnału itp.
+"""
+
 class Signal:
     def __init__(self, A, d, fs, t1=0, function=None, T=None, kw=None, ts=None):
         self.A = A # amplituda sygnału
@@ -30,6 +35,10 @@ class Signal:
                 'kw': self.kw,
                 'ts': self.ts
             }
+            # k - klucz, 
+            # v - wartość, 
+            # filtruje parametry, które są różne od None, aby uniknąć przekazywania niepotrzebnych argumentów do funkcji generującej sygnał
+
             filtered_params = {k: v for k, v in params.items() if v is not None}
             return self.function(**filtered_params)
         

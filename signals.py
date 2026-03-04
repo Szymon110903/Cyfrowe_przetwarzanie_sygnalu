@@ -79,6 +79,8 @@ def unit_step_signal(A, ts, d, fs, t1=0, **kwargs):
     _, t = samples_count(d, fs, t1)
     conditions = [t < ts, t == ts, t > ts]
     choices = [0.0, A/2, A]
-
+    
+    # np.select dobiera wartości z choices na podstawie warunków w conditions
+    # wybiera w kolejności - pierwszy warunek, który jest spełniony, decyduje o wartości sygnału w danym punkcie czasu
     signal = np.select(conditions, choices)
     return t, signal
