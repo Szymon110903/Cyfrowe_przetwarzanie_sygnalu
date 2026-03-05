@@ -1,6 +1,6 @@
 import numpy as np
 from plots import *
-from signals import *
+from signals_generator import *
 
 """"
 Klasa reprezentująca sygnał, która przechowuje jego parametry, generuje sygnał.
@@ -8,7 +8,7 @@ W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwanto
 """
 
 class Signal:
-    def __init__(self, A, d, fs, t1=0, function=None, T=None, kw=None, ts=None):
+    def __init__(self, A, d, fs, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None):
         self.A = A # amplituda sygnału
         self.d = d # czas trwania sygnału
         self.fs = fs # częstotliwość próbkowania
@@ -19,8 +19,16 @@ class Signal:
         self.T = T # okres sygnału
         self.kw = kw # współczynnik wypełnienia dla sygnałów prostokątnych i trójkątnych
         self.ts = ts # czas skoku jednostkowego dla sygnału skokowego
+        print(f"Tworzenie sygnału: A={A}, d={d}, fs={fs}, t1={t1}, function={function.__name__ if function else None}, T={T}, kw={kw}, ts={ts}")
 
-        self.t, self.signal = self.generate_signal()
+        # obsługa sytuacji, gdy sygnał jest już wygenerowany - wczytanie pliku
+        if t is not None and signal is not None:
+            self.t = t
+            self.signal = signal
+        elif function is not None:
+            self.t, self.signal = self.generate_signal()
+        else:
+            raise ValueError("Niepoprawne parametry sygnału.")
 
     def generate_signal(self):
         if self.function is None:
