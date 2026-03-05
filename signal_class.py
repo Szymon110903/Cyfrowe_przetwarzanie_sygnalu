@@ -43,6 +43,10 @@ class Signal:
             return self.function(**filtered_params)
         
     def visualize(self):
+        discrete_signals = [unit_impulse_signal]
+
+        is_discrete = self.function in discrete_signals
+
         names = {
             uniform_noise: "Sygnał o rozkładzie jednostajnym",
             gaussian_noise: "Sygnał o rozkładzie normalnym",
@@ -52,6 +56,7 @@ class Signal:
             square_wave_signal: "Sygnał prostokątny",
             square_wave_signal_symetrical: "Sygnał prostokątny symetryczny",
             triangle_wave_signal: "Sygnał trójkątny",
-            unit_step_signal: "Sygnał skok jednostkowy"
+            unit_step_signal: "Sygnał skok jednostkowy",
+            unit_impulse_signal: "Impuls jednostkowy"
         }
-        plot_signal(self.t, self.signal, title=names.get(self.function))
+        plot_signal(self.t, self.signal, title=names.get(self.function), discrete=is_discrete)

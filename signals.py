@@ -84,3 +84,13 @@ def unit_step_signal(A, ts, d, fs, t1=0, **kwargs):
     # wybiera w kolejności - pierwszy warunek, który jest spełniony, decyduje o wartości sygnału w danym punkcie czasu
     signal = np.select(conditions, choices)
     return t, signal
+
+def unit_impulse_signal(A, ts, d, fs, t1=0, **kwargs):
+    _, t = samples_count(d, fs, t1)
+
+    signal = np.where(np.isclose(t, ts, atol=1/(2*fs)), A, 0.0)
+
+    return t, signal
+
+def impulse_noise():
+    return ""
