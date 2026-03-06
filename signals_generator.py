@@ -92,5 +92,8 @@ def unit_impulse_signal(A, ts, d, fs, t1=0, **kwargs):
 
     return t, signal
 
-def impulse_noise():
-    return ""
+def impulse_noise(A, d, fs, p, t1=0, **kwargs):
+    samples, t = samples_count(d, fs, t1)
+    random_values = np.random.uniform(0,1, size=samples)
+    signal = np.where(random_values < p, A, 0)
+    return t, signal

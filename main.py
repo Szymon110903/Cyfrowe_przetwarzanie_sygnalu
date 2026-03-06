@@ -10,14 +10,14 @@ def main():
 #     signal2 = signal_class.Signal(A=1, d=1, fs=1000, t1=0, function=sinusoidal_signal, T=0.3, kw=0.5)
 #     signal2.visualize()
 
-    # signal2 = Signal.Signal(A=5, d=20, fs=1, ts=1.0, t1=-10, function=unit_impulse_signal)
-    # signal2.visualize()
+    signal2 = Signal.Signal(A=5, d=50, fs=1, p=0.2, t1=0, function=impulse_noise)
+    signal2.visualize()
 
-    signal_test = Signal.Signal(A=1, d=1, fs=1000, t1=0, function=sinusoidal_signal, T=0.2)
-    signal_test.visualize()
-    save_to_binary("test_signal.bin", signal_test)
-    loaded_signal = load_from_binary("test_signal.bin")
-    loaded_signal.visualize()
+    # signal_test = Signal.Signal(A=1, d=1, fs=1000, t1=0, function=sinusoidal_signal, T=0.2)
+    # signal_test.visualize()
+    # save_to_binary("test_signal.bin", signal_test)
+    # loaded_signal = load_from_binary("test_signal.bin")
+    # loaded_signal.visualize()
 
 
 if __name__ == "__main__":    main()

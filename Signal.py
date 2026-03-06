@@ -8,7 +8,7 @@ W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwanto
 """
 
 class Signal:
-    def __init__(self, A, d, fs, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None):
+    def __init__(self, A, d, fs, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None, p=None):
         self.A = A # amplituda sygnału
         self.d = d # czas trwania sygnału
         self.fs = fs # częstotliwość próbkowania
@@ -19,6 +19,8 @@ class Signal:
         self.T = T # okres sygnału
         self.kw = kw # współczynnik wypełnienia dla sygnałów prostokątnych i trójkątnych
         self.ts = ts # czas skoku jednostkowego dla sygnału skokowego
+        """" Parametr wykorzystywany w szumie impulsowym standardowo None"""
+        self.p = p
         print(f"Tworzenie sygnału: A={A}, d={d}, fs={fs}, t1={t1}, function={function.__name__ if function else None}, T={T}, kw={kw}, ts={ts}")
 
         # obsługa sytuacji, gdy sygnał jest już wygenerowany - wczytanie pliku
@@ -41,7 +43,8 @@ class Signal:
                 't1': self.t1,
                 'T': self.T,
                 'kw': self.kw,
-                'ts': self.ts
+                'ts': self.ts,
+                'p': self.p
             }
             # k - klucz, 
             # v - wartość, 
@@ -51,7 +54,7 @@ class Signal:
             return self.function(**filtered_params)
         
     def visualize(self):
-        discrete_signals = [unit_impulse_signal]
+        discrete_signals = [unit_impulse_signal, impulse_noise]
 
         is_discrete = self.function in discrete_signals
 
@@ -65,6 +68,7 @@ class Signal:
             square_wave_signal_symetrical: "Sygnał prostokątny symetryczny",
             triangle_wave_signal: "Sygnał trójkątny",
             unit_step_signal: "Sygnał skok jednostkowy",
-            unit_impulse_signal: "Impuls jednostkowy"
+            unit_impulse_signal: "Impuls jednostkowy",
+            impulse_noise: "Szum impulsowy"
         }
         plot_signal(self.t, self.signal, title=names.get(self.function), discrete=is_discrete)
