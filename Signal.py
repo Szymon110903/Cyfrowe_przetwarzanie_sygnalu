@@ -21,7 +21,13 @@ class Signal:
         self.ts = ts # czas skoku jednostkowego dla sygnału skokowego
         """" Parametr wykorzystywany w szumie impulsowym standardowo None"""
         self.p = p
-        print(f"Tworzenie sygnału: A={A}, d={d}, fs={fs}, t1={t1}, function={function.__name__ if function else None}, T={T}, kw={kw}, ts={ts}")
+
+        """ Parametry sygnału - wartość średnia, wartość średnia bezwzględna, wartość skuteczna, wariancja, moc średnia """
+        self.mean_val = None
+        self.absolute_mean_val = None
+        self.avg_power = None
+        self.variance = None
+        self.effective_value = None
 
         # obsługa sytuacji, gdy sygnał jest już wygenerowany - wczytanie pliku
         if t is not None and signal is not None:
@@ -29,9 +35,12 @@ class Signal:
             self.signal = signal
         elif function is not None:
             self.t, self.signal = self.generate_signal()
+            self.calculate_parameters()
         else:
             raise ValueError("Niepoprawne parametry sygnału.")
 
+    def print_variables(self):
+        print(f"Parametry sygnału: A={self.A}, d={self.d}, fs={self.fs}, t1={self.t1}, function={self.get_signal_name()}, T={self.T}, kw={self.kw}, ts={self.ts}, p={self.p}")
 
     def generate_signal(self):
         if self.function is None:
@@ -108,6 +117,12 @@ class Signal:
         avg_power = np.mean(signal ** 2)
         variance = np.var(signal)
         effective_value = np.sqrt(avg_power)
+        
+        self.mean_val = mean_val
+        self.absolute_mean_val = absoulute_mean_val
+        self.avg_power = avg_power
+        self.variance = variance
+        self.effective_value = effective_value
 
         return {
             "Wartosc srednia": mean_val,
