@@ -12,3 +12,13 @@ def plot_signal(t, signal, title="Sygnał", xlabel="Czas (s)", ylabel="Amplituda
     plt.grid()
     plt.legend()
     plt.show()
+
+def plot_histogram(signal_values, bins=10, title="Histogram"):
+    plt.figure(figsize=(10, 5))
+    plt.hist(signal_values, bins=bins)
+    plt.title(title)
+    plt.xlabel("Wartość Amplitudy")
+    plt.ylabel("Liczba wystąpień próbki")
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()

@@ -32,6 +32,7 @@ class Signal:
         else:
             raise ValueError("Niepoprawne parametry sygnału.")
 
+
     def generate_signal(self):
         if self.function is None:
             raise ValueError("Funkcja generująca sygnał nie została zdefiniowana.")
@@ -52,12 +53,8 @@ class Signal:
 
             filtered_params = {k: v for k, v in params.items() if v is not None}
             return self.function(**filtered_params)
-        
-    def visualize(self):
-        discrete_signals = [unit_impulse_signal, impulse_noise]
 
-        is_discrete = self.function in discrete_signals
-
+    def get_signal_name(self):
         names = {
             uniform_noise: "Sygnał o rozkładzie jednostajnym",
             gaussian_noise: "Sygnał o rozkładzie normalnym",
@@ -71,4 +68,61 @@ class Signal:
             unit_impulse_signal: "Impuls jednostkowy",
             impulse_noise: "Szum impulsowy"
         }
-        plot_signal(self.t, self.signal, title=names.get(self.function), discrete=is_discrete)
+        return names.get(self.function)
+
+    def get_full_periods(self):
+        periodic_signals = [
+            sinusoidal_signal, sinusoidal_signal_onehalf_rectified,
+            sinusoidal_signal_twohalf_rectified, square_wave_signal,
+            square_wave_signal_symetrical, triangle_wave_signal
+        ]
+        if self.T is not None and self.function in periodic_signals:
+            full_periods = int(self.d // self.T)
+            if full_periods > 0:
+                time_to_keep = full_periods * self.T
+                samples_to_keep = int(np.round(time_to_keep * self.fs))
+                return self.signal[:samples_to_keep]
+            else:
+                return self.signal
+
+        return self.signal
+
+    """" Rozbicie funkcji visualise na visualise i visualise histogram"""
+    def visualize(self):
+        discrete_signals = [unit_impulse_signal, impulse_noise]
+        is_discrete = self.function in discrete_signals
+        plot_signal(self.t, self.signal, title=self.get_signal_name(), discrete=is_discrete)
+
+    def visualize_histogram(self, bins=10):
+        title = f"{self.get_signal_name()} - Histogram"
+        signal_values = self.get_full_periods()
+        plot_histogram(signal_values, bins=bins, title=title)
+
+    def calculate_parameters(self):
+        signal = self.get_full_periods()
+        if len(signal) == 0:
+            return None
+
+        mean_val = np.mean(signal)
+        absoulute_mean_val = np.mean(np.abs(signal))
+        avg_power = np.mean(signal ** 2)
+        variance = np.var(signal)
+        effective_value = np.sqrt(avg_power)
+
+        return {
+            "Wartosc srednia": mean_val,
+            "Wartosc srednia bezwzgledna": absoulute_mean_val,
+            "Wartosc skuteczna": effective_value,
+            "Wariancja": variance,
+            "Moc srednia": effective_value,
+        }
+
+    def print_parameters(self):
+        parameters = self.calculate_parameters()
+
+        if parameters is not None:
+            print(f"--- Wyliczone parametry dla: {self.get_signal_name()} ---")
+            for name, value in parameters.items():
+                print(f"{name}: {value:.4f}")
+        else:
+            print("Sygnał jest pusty")
