@@ -18,8 +18,6 @@ def main():
    #  loaded_signal2_text = load_from_text("signal2.txt")
    #  loaded_signal2_text.visualize()
    #  loaded_signal2_text.print_variables()
-   # signal = Signal.Signal(A=1, d=1, fs=1000, t1=0, function=sinusoidal_signal, T=0.1)
-   # signal.visualize()
 
    app = QApplication(sys.argv)
    window = MainWindow()
