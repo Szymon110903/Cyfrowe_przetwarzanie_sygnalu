@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox
 from .canvas_window import MplCanvas
 from logic.Signal import Signal
 from logic.signals_generator import *
@@ -50,20 +50,71 @@ class MainWindow(QMainWindow):
       parameters_form_layout.addRow('Czas skoku jednostkowego: ', self.ts_input)
       parameters_form_layout.addRow('Prawdopodobieństwo: ', self.p_input)
 
-
+      self.generate_btn = QPushButton("Generuj sygnał")
+      self.generate_btn.clicked.connect(self.generate_plot)
+      parameters_form_layout.addRow(self.generate_btn)
 
       signal_settings.setLayout(parameters_form_layout)
-
+      signal_settings.setFixedWidth(350)
       self.layout.addWidget(signal_settings)
 
       right_side_box = QWidget()
       right_side_layout = QVBoxLayout()
 
-      right_side_layout.addWidget(QLabel("Tutaj będzie tytuł wykresu"))
+      self.plot_title_label = QLabel("Tutaj będzie tytuł wykresu")
+      right_side_layout.addWidget(self.plot_title_label)
+
+      self.sc = MplCanvas(self, width=5, height=4, dpi=100)
+      right_side_layout.addWidget(self.sc)
 
       right_side_box.setLayout(right_side_layout)
-
       self.layout.addWidget(right_side_box)
 
-   def create_plot(self):
-      return ""
+   def get_input_value(self, line_edit):
+      text=line_edit.text().strip()
+      if not text:
+         return None
+      try:
+         return float(text)
+      except ValueError:
+         raise ValueError(f"Nieprawidłowa wartość w jednym z pól: '{text}'")
+
+   def generate_plot(self):
+      try:
+         A = self.get_input_value(self.a_input)
+         d = self.get_input_value(self.d_input)
+         fs = self.get_input_value(self.fs_input)
+         t1 = self.get_input_value(self.t1_input)
+         T = self.get_input_value(self.T_input)
+         kw = self.get_input_value(self.kw_input)
+         ts = self.get_input_value(self.ts_input)
+         p = self.get_input_value(self.p_input)
+
+         func_idx = self.function_input.currentIndex()
+         selected_function = self.functions_map[func_idx]
+         signal_name = self.function_input.currentText()
+
+         if A is None or d is None or fs is None or t1 is None:
+            raise ValueError("Parametry A, d, fs oraz t1 są wymagane!")
+
+         signal = Signal(A=A, d=d, fs=fs, t1=t1, function=selected_function, T=T, kw=kw, ts=ts, p=p)
+
+         self.sc.axes.cla()
+
+         discrete_signals = [unit_impulse_signal, impulse_noise]
+         if selected_function in discrete_signals:
+            self.sc.axes.stem(signal.t, signal.signal, basefmt=" ")
+         else:
+            self.sc.axes.plot(signal.t, signal.signal)
+
+         self.sc.axes.set_title(signal_name)
+         self.sc.axes.set_xlabel("Czas (s)")
+         self.sc.axes.set_ylabel("Amplituda")
+         self.sc.axes.grid(True)
+         self.sc.draw()
+         self.plot_title_label.setText(f"Wyświetlam: {signal_name}")
+
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd wejścia", str(e))
+      except Exception as e:
+         QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas generowania sygnału:\n{str(e)}")
