@@ -1,9 +1,9 @@
-# struct - wysoka wydajność, tworzenie nagłowków, 
-import struct 
+# struct - wysoka wydajność, tworzenie nagłowków,
+import struct
 import numpy as np
-import Signal
+import logic.Signal as Signal
 import os
-from signals_generator import *
+from logic.signals_generator import *
 
 DIR = "signals/"
 ID_TO_FUNC = {
@@ -65,9 +65,9 @@ def load_from_binary(filename):
     with open(path, 'rb') as f:
         # odczyt nagłówka - 72 bajty
         header_data = f.read(72)
-        # rozpakowanie nagłówka 
+        # rozpakowanie nagłówka
         A, d, fs, t1, T, kw, ts, p, function_id = struct.unpack('ddddddddd', header_data)
-        
+
         data = f.read() # doczyt surowego ciągu bajtów danych sygnału
         signal_values = np.frombuffer(data, dtype=np.float64) # konwersja bajtów na tablice, dzielenie na 8 bajtów, - odczyt jako float64
 
@@ -115,7 +115,7 @@ def load_from_text(filename):
     with open(path, 'r') as f:
         header_line = f.readline().strip()
         A, d, fs, t1, T, kw, ts, p, function_id = map(float, header_line.split())
-        
+
         signal_values = []
         t_values = []
         for line in f:

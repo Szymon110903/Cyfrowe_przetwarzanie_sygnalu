@@ -1,6 +1,6 @@
 import numpy as np
-from plots import *
-from signals_generator import *
+from utils.plots import *
+from logic.signals_generator import *
 
 """"
 Klasa reprezentująca sygnał, która przechowuje jego parametry, generuje sygnał.
@@ -56,8 +56,8 @@ class Signal:
                 'ts': self.ts,
                 'p': self.p
             }
-            # k - klucz, 
-            # v - wartość, 
+            # k - klucz,
+            # v - wartość,
             # filtruje parametry, które są różne od None, aby uniknąć przekazywania niepotrzebnych argumentów do funkcji generującej sygnał
 
             filtered_params = {k: v for k, v in params.items() if v is not None}
@@ -117,7 +117,7 @@ class Signal:
         avg_power = np.mean(signal ** 2)
         variance = np.var(signal)
         effective_value = np.sqrt(avg_power)
-        
+
         self.mean_val = mean_val
         self.absolute_mean_val = absoulute_mean_val
         self.avg_power = avg_power
