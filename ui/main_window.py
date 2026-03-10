@@ -1,5 +1,5 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget
 from .canvas_window import MplCanvas
 from logic.Signal import Signal
 from logic.signals_generator import *
@@ -27,6 +27,11 @@ class MainWindow(QMainWindow):
    def createWidgets(self):
       names = ["Sygnał o rozkładzie jednostajnym", "Sygnał o rozkładzie normalnym", "Sygnał sinusoidalny", "Sygnał sinusoidalny z dodatnią częścią", "Sygnał sinusoidalny z dodatnią częścią prostowaną", "Sygnał prostokątny",
                "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy"]
+
+      left_panel = QWidget()
+      left_panel.setFixedWidth(360)
+      left_panel_layout = QVBoxLayout(left_panel)
+      left_panel_layout.setContentsMargins(0, 0, 0, 0)
 
       signal_settings = QGroupBox('Ustawienia sygnału')
       parameters_form_layout = QFormLayout()
@@ -56,7 +61,6 @@ class MainWindow(QMainWindow):
       parameters_form_layout.addRow('Ilość przedziałów dla histogramu: ', self.bins)
 
       buttons_layout = QHBoxLayout()
-
       self.generate_btn = QPushButton("Generuj sygnał")
       self.generate_btn.clicked.connect(self.generate_plot)
       buttons_layout.addWidget(self.generate_btn)
@@ -72,8 +76,14 @@ class MainWindow(QMainWindow):
       parameters_form_layout.addRow(self.load_btn)
 
       signal_settings.setLayout(parameters_form_layout)
-      signal_settings.setFixedWidth(350)
-      self.layout.addWidget(signal_settings)
+      left_panel_layout.addWidget(signal_settings)
+
+      left_panel_layout.addWidget(QLabel("Historia sygnałów:"))
+      self.signals_list_widget = QListWidget()
+      self.signals_list_widget.currentRowChanged.connect(self.on_signal_selected)
+      left_panel_layout.addWidget(self.signals_list_widget)
+
+      self.layout.addWidget(left_panel)
 
       right_side_box = QWidget()
       right_side_layout = QVBoxLayout()
@@ -100,15 +110,11 @@ class MainWindow(QMainWindow):
       except ValueError:
          raise ValueError(f"Nieprawidłowa wartość w jednym z pól: '{text}'")
 
-   def update_plots(self):
+   def update_plots(self, current_signal, index):
       if not self.signals_history:
          return
 
-      current_signal = self.signals_history[-1]
-
       signal_name = current_signal.get_signal_name()
-      if not signal_name:
-         signal_name = "Wczytany sygnał"
 
       self.canvas_signal.axes.cla()
 
@@ -123,7 +129,7 @@ class MainWindow(QMainWindow):
       self.canvas_signal.axes.set_ylabel("Amplituda")
       self.canvas_signal.axes.grid(True)
       self.canvas_signal.draw()
-      self.plot_title_label.setText(f"Wyświetlam: {signal_name}")
+      self.plot_title_label.setText(f"Wyświetlam: {signal_name}, Sygnał #{index + 1}")
 
       self.canvas_histogram.axes.cla()
       signal_values = current_signal.get_full_periods()
@@ -157,7 +163,9 @@ class MainWindow(QMainWindow):
          signal = Signal(A=A, d=d, fs=fs, t1=t1, function=selected_function, T=T, kw=kw, ts=ts, p=p)
          self.signals_history.append(signal)
 
-         self.update_plots()
+         signal_name = signal.get_signal_name()
+         self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
+         self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
 
       except ValueError as e:
          QMessageBox.warning(self, "Błąd wejścia", str(e))
@@ -166,14 +174,16 @@ class MainWindow(QMainWindow):
 
 ## DO zastanowienia czy nie lepiej w przyszlosci nazwe pliku oprzecz o parametry sygnalu aby latwiej sie do niego potem dostac w folderze
    def save_signal(self):
-      if not self.signals_history:
-         QMessageBox.warning(self, "Brak sygnału", "Historia jest pusta! Najpierw wygeneruj sygnał.")
+      row = self.signals_list_widget.currentRow()
+      if row < 0:
+         QMessageBox.warning(self, "Brak sygnału", "Wybierz sygnał z historii do zapisania!")
          return
+
       try:
-         last_signal = self.signals_history[-1]
-         file_name = f"signal_{len(self.signals_history)}"
-         save_to_binary(f"{file_name}.bin", last_signal)
-         save_to_text(f"{file_name}.txt", last_signal)
+         selected_signal = self.signals_history[row]
+         file_name = f"signal_{row+1}"
+         save_to_binary(f"{file_name}.bin", selected_signal)
+         save_to_text(f"{file_name}.txt", selected_signal)
          QMessageBox.information(self, "Sukces", "Sygnał został pomyślnie zapisany do plików (bin i txt).")
       except Exception as e:
          QMessageBox.critical(self, "Błąd zapisu", f"Wystąpił błąd podczas zapisywania sygnału:\n{str(e)}")
@@ -201,23 +211,32 @@ class MainWindow(QMainWindow):
             return
          self.signals_history.append(loaded_signal)
 
-         self.a_input.setText(str(loaded_signal.A))
-         self.d_input.setText(str(loaded_signal.d))
-         self.fs_input.setText(str(loaded_signal.fs))
-         self.t1_input.setText(str(loaded_signal.t1))
-
-         # Wartości opcjonalne (T, kw, ts, p)
-         self.T_input.setText(str(loaded_signal.T) if loaded_signal.T is not None else "")
-         self.kw_input.setText(str(loaded_signal.kw) if loaded_signal.kw is not None else "")
-         self.ts_input.setText(str(loaded_signal.ts) if loaded_signal.ts is not None else "")
-         self.p_input.setText(str(loaded_signal.p) if loaded_signal.p is not None else "")
-
-         if loaded_signal.function in self.functions_map:
-            idx = self.functions_map.index(loaded_signal.function)
-            self.function_input.setCurrentIndex(idx)
-
-         self.update_plots()
+         signal_name = loaded_signal.get_signal_name()
+         self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
+         self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
          QMessageBox.information(self, "Sukces", f"Pomyślnie wczytano sygnał z pliku {file_name}.")
 
       except Exception as e:
          QMessageBox.critical(self, "Błąd wczytywania", f"Wystąpił błąd podczas odczytu pliku:\n{str(e)}")
+
+   def on_signal_selected(self, row):
+      if row < 0 or row >= len(self.signals_history):
+         return
+
+      selected_signal = self.signals_history[row]
+
+      self.a_input.setText(str(selected_signal.A))
+      self.d_input.setText(str(selected_signal.d))
+      self.fs_input.setText(str(selected_signal.fs))
+      self.t1_input.setText(str(selected_signal.t1))
+
+      self.T_input.setText(str(selected_signal.T) if selected_signal.T is not None else "")
+      self.kw_input.setText(str(selected_signal.kw) if selected_signal.kw is not None else "")
+      self.ts_input.setText(str(selected_signal.ts) if selected_signal.ts is not None else "")
+      self.p_input.setText(str(selected_signal.p) if selected_signal.p is not None else "")
+
+      if selected_signal.function in self.functions_map:
+         idx = self.functions_map.index(selected_signal.function)
+         self.function_input.setCurrentIndex(idx)
+
+      self.update_plots(selected_signal, row)
