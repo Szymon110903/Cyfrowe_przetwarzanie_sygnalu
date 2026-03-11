@@ -4,18 +4,20 @@ from .canvas_window import MplCanvas
 from logic.Signal import Signal
 from logic.signals_generator import *
 from utils.file_manager import save_to_binary, save_to_text, load_from_binary, load_from_text
+import logic.operations as operations
 
 class MainWindow(QMainWindow):
    def __init__(self):
       super().__init__()
       self.setWindowTitle("Signal Generator")
-      # self.resize(600, 450)
+      # self.resize(1600, 1000)
       main_widget = QWidget()
       self.setCentralWidget(main_widget)
       self.layout = QHBoxLayout(main_widget)
 
       self.signal1 = None
       self.signal2 = None
+      self.combined_signal = None
 
       self.signals_history = []
       self.functions_map = [
@@ -95,6 +97,23 @@ class MainWindow(QMainWindow):
       assign_layout.addWidget(self.btn_set_sig2)
 
       left_panel_layout.addLayout(assign_layout)
+      operations_box = QGroupBox("Operacje na sygnałach")
+      operations_layout = QHBoxLayout()
+      self.add_signals_btn = QPushButton("Dodaj")
+      self.add_signals_btn.clicked.connect(self.add_selected_signals)
+      self.subtract_signals_btn = QPushButton("Odejmij")
+      self.subtract_signals_btn.clicked.connect(self.subtract_selected_signals)
+      self.multiply_signals_btn = QPushButton("Pomnóż")
+      self.multiply_signals_btn.clicked.connect(self.multiply_selected_signals)
+      self.divide_signals_btn = QPushButton("Podziel")
+      self.divide_signals_btn.clicked.connect(self.divide_selected_signals)
+      operations_layout.addWidget(self.add_signals_btn)
+      operations_layout.addWidget(self.subtract_signals_btn)
+      operations_layout.addWidget(self.multiply_signals_btn)
+      operations_layout.addWidget(self.divide_signals_btn)
+      operations_box.setLayout(operations_layout)
+      left_panel_layout.addWidget(operations_box)
+
       self.layout.addWidget(left_panel)
 
       right_side_box = QWidget()
@@ -111,6 +130,12 @@ class MainWindow(QMainWindow):
 
       right_side_layout.addWidget(self.canvas_sig2, 1, 0)
       right_side_layout.addWidget(self.canvas_hist2, 1, 1)
+
+      self.canvas_sig3 = MplCanvas(self, width=5, height=4, dpi=100)
+      self.canvas_hist3 = MplCanvas(self, width=5, height=4, dpi=100)
+
+      right_side_layout.addWidget(self.canvas_sig3, 2, 0)
+      right_side_layout.addWidget(self.canvas_hist3, 2, 1)
 
       right_side_box.setLayout(right_side_layout)
       self.layout.addWidget(right_side_box)
@@ -252,22 +277,24 @@ class MainWindow(QMainWindow):
       if selected_signal.function in self.functions_map:
          idx = self.functions_map.index(selected_signal.function)
          self.function_input.setCurrentIndex(idx)
-
-      self.set_signal1()
+      if row == 0:
+         self.set_signal1()
+      else:
+         self.set_signal2()
 
    def set_signal1(self):
       row = self.signals_list_widget.currentRow()
       if row < 0: return
       self.signal1 = self.signals_history[row]
-      self.update_single_plot(self.signal1, self.canvas_sig1, self.canvas_hist1, self.title_sig1, 1, row)
+      self.update_single_plot(self.signal1, self.canvas_sig1, self.canvas_hist1, row)
 
    def set_signal2(self):
       row = self.signals_list_widget.currentRow()
       if row < 0: return
       self.signal2 = self.signals_history[row]
-      self.update_single_plot(self.signal2, self.canvas_sig2, self.canvas_hist2, self.title_sig2, 2, row)
+      self.update_single_plot(self.signal2, self.canvas_sig2, self.canvas_hist2, row)
 
-   def update_single_plot(self, signal, canvas_sig, canvas_hist, title_label, sig_num, list_index):
+   def update_single_plot(self, signal, canvas_sig, canvas_hist, list_index):
 
       if not signal:
          return
@@ -287,8 +314,6 @@ class MainWindow(QMainWindow):
       canvas_sig.axes.grid(True)
       canvas_sig.draw()
 
-      # title_label.setText(f"Sygnał {sig_num}: {signal_name} (#{list_index + 1})")
-
       canvas_hist.axes.cla()
       signal_values = signal.get_full_periods()
 
@@ -300,3 +325,99 @@ class MainWindow(QMainWindow):
       canvas_hist.axes.set_ylabel("Liczba wystąpień")
       canvas_hist.axes.grid(axis='y', linestyle='--', alpha=0.7)
       canvas_hist.draw()
+
+   def add_selected_signals(self):
+      if self.signal1 is None or self.signal2 is None:
+         QMessageBox.warning(self, "Błąd", "Najpierw ustaw Sygnał 1 i Sygnał 2 wybierając je z listy!")
+         return
+
+      try:
+         new_signal = operations.add_signals(self.signal1, self.signal2)
+         self.signals_history.append(new_signal)
+         signal_name = f"Dodanie {self.signal1.get_signal_name()} + {self.signal2.get_signal_name()}"
+         self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
+         # self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
+
+         QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie dodane.")
+
+         row = self.signals_list_widget.currentRow()
+         if row < 0: return
+         self.combined_signal = self.signals_history[row]
+         self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
+
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd zgodności sygnałów", str(e))
+      except Exception as e:
+         QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas dodawania sygnałów:\n{str(e)}")
+
+   def subtract_selected_signals(self):
+      if self.signal1 is None or self.signal2 is None:
+         QMessageBox.warning(self, "Błąd", "Najpierw ustaw Sygnał 1 i Sygnał 2 wybierając je z listy!")
+         return
+
+      try:
+         new_signal = operations.subtraction_signals(self.signal1, self.signal2)
+         self.signals_history.append(new_signal)
+         signal_name = f"Odjęcie {self.signal1.get_signal_name()} + {self.signal2.get_signal_name()}"
+         self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
+         # self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
+
+         QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie odjęte.")
+
+         row = self.signals_list_widget.currentRow()
+         if row < 0: return
+         self.combined_signal = self.signals_history[row]
+         self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
+
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd zgodności sygnałów", str(e))
+      except Exception as e:
+         QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas dodawania sygnałów:\n{str(e)}")
+
+   def multiply_selected_signals(self):
+      if self.signal1 is None or self.signal2 is None:
+         QMessageBox.warning(self, "Błąd", "Najpierw ustaw Sygnał 1 i Sygnał 2 wybierając je z listy!")
+         return
+
+      try:
+         new_signal = operations.multiplication_signals(self.signal1, self.signal2)
+         self.signals_history.append(new_signal)
+         signal_name = f"Mnożenie {self.signal1.get_signal_name()} + {self.signal2.get_signal_name()}"
+         self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
+         # self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
+
+         QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie pomnożone.")
+
+         row = self.signals_list_widget.currentRow()
+         if row < 0: return
+         self.combined_signal = self.signals_history[row]
+         self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
+
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd zgodności sygnałów", str(e))
+      except Exception as e:
+         QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas dodawania sygnałów:\n{str(e)}")
+
+   def divide_selected_signals(self):
+      if self.signal1 is None or self.signal2 is None:
+         QMessageBox.warning(self, "Błąd", "Najpierw ustaw Sygnał 1 i Sygnał 2 wybierając je z listy!")
+         return
+
+      try:
+         new_signal = operations.division_signals_with_epsilon(self.signal1, self.signal2)
+         self.signals_history.append(new_signal)
+         signal_name = f"Dzielenie {self.signal1.get_signal_name()} + {self.signal2.get_signal_name()}"
+         self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
+         # self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
+
+         QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie podzielone.")
+
+         row = self.signals_list_widget.currentRow()
+         if row < 0: return
+         self.combined_signal = self.signals_history[row]
+         self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
+
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd zgodności sygnałów", str(e))
+      except Exception as e:
+         QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas dodawania sygnałów:\n{str(e)}")
