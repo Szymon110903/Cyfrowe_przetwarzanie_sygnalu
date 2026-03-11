@@ -40,7 +40,7 @@ def save_to_binary(filename, signal):
 
     # 8 wartości double - każdy po 8 bajtów, 64 bajty nagłówka
     header = [
-        float(signal.A),
+        float(signal.A) if signal.A is not None else -1.0,
         float(signal.d),
         float(signal.fs),
         float(signal.t1),
@@ -76,6 +76,7 @@ def load_from_binary(filename):
         t = t1 + np.arange(num_samples) / fs
 
         # konwersja wartości None w sygnale
+        A = A if A != -1.0 else None
         T = T if T != -1.0 else None
         kw = kw if kw != -1.0 else None
         ts = ts if ts != -1.0 else None
@@ -93,7 +94,7 @@ def save_to_text(filename, signal):
     path = get_path(filename)
     function_id = FUNC_TO_ID.get(signal.function, 0)
     header = [
-        float(signal.A),
+        float(signal.A) if signal.A is not None else -1.0,
         float(signal.d),
         float(signal.fs),
         float(signal.t1),
@@ -123,6 +124,7 @@ def load_from_text(filename):
             t_values.append(t_val)
             signal_values.append(s_val)
 
+        A = A if A != -1.0 else None
         T = T if T != -1.0 else None
         kw = kw if kw != -1.0 else None
         ts = ts if ts != -1.0 else None

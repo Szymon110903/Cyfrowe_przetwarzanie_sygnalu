@@ -23,11 +23,9 @@ def uniform_noise(A, d, fs, t1 =0, **kwargs):
     signal = np.random.uniform(-A, A, size=samples)
     return t, signal
 
-# TODO: Spytać sie o znaczenie Amplitudy w sygnale o rozkładzie normalnym 
-    # jako maksymalna wartość sygnału czy jako mnożnik 
 def gaussian_noise(A, d, fs, t1 =0, **kwargs):
     samples, t = samples_count(d, fs, t1)
-    signal =A* np.random.normal(0, 1, size=samples)
+    signal =A* np.random.normal(0, A, size=samples)
     return t, signal
 
 
