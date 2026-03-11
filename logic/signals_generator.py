@@ -28,10 +28,6 @@ def gaussian_noise(A, d, fs, t1 =0, **kwargs):
     signal =A* np.random.normal(0, A, size=samples)
     return t, signal
 
-
-# TODO: Sptytać o to czy brać pod uwage tylko pełne okresy sygnału
-# TODO: uwzględnnić tylko pełne okresy do póżniejszej analizy sygnału - zwracać je w osobnej zmiennej
-
 def sinusoidal_signal(A, T, d, fs, t1=0, **kwargs):
     _ , t = samples_count(d, fs, t1)
     # Wzór: x(t) = A * sin( (2 * PI / T) * (t - t1) )

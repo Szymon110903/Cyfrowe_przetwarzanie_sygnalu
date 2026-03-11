@@ -8,7 +8,7 @@ W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwanto
 """
 
 class Signal:
-    def __init__(self, A, d, fs, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None, p=None):
+    def __init__(self, A, d, fs=1, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None, p=None):
         self.A = A # amplituda sygnału
         self.d = d # czas trwania sygnału
         self.fs = fs # częstotliwość próbkowania
