@@ -1,5 +1,5 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout
 from .canvas_window import MplCanvas
 from logic.Signal import Signal
 from logic.signals_generator import *
@@ -13,6 +13,9 @@ class MainWindow(QMainWindow):
       main_widget = QWidget()
       self.setCentralWidget(main_widget)
       self.layout = QHBoxLayout(main_widget)
+
+      self.signal1 = None
+      self.signal2 = None
 
       self.signals_history = []
       self.functions_map = [
@@ -83,20 +86,31 @@ class MainWindow(QMainWindow):
       self.signals_list_widget.currentRowChanged.connect(self.on_signal_selected)
       left_panel_layout.addWidget(self.signals_list_widget)
 
+      assign_layout = QHBoxLayout()
+      self.btn_set_sig1 = QPushButton("Wyświetl jako Sygnał 1")
+      self.btn_set_sig1.clicked.connect(self.set_signal1)
+      assign_layout.addWidget(self.btn_set_sig1)
+      self.btn_set_sig2 = QPushButton("Wyświetl jako Sygnał 2")
+      self.btn_set_sig2.clicked.connect(self.set_signal2)
+      assign_layout.addWidget(self.btn_set_sig2)
+
+      left_panel_layout.addLayout(assign_layout)
       self.layout.addWidget(left_panel)
 
       right_side_box = QWidget()
-      right_side_layout = QVBoxLayout()
+      right_side_layout = QGridLayout()
 
-      self.plot_title_label = QLabel()
-      right_side_layout.addWidget(self.plot_title_label)
-      self.canvas_signal = MplCanvas(self, width=6, height=4, dpi=100)
-      right_side_layout.addWidget(self.canvas_signal)
+      self.canvas_sig1 = MplCanvas(self, width=5, height=4, dpi=100)
+      self.canvas_hist1 = MplCanvas(self, width=5, height=4, dpi=100)
 
-      self.hist_title_label = QLabel()
-      right_side_layout.addWidget(self.hist_title_label)
-      self.canvas_histogram = MplCanvas(self, width=6, height=4, dpi=100)
-      right_side_layout.addWidget(self.canvas_histogram)
+      right_side_layout.addWidget(self.canvas_sig1, 0, 0)
+      right_side_layout.addWidget(self.canvas_hist1, 0, 1)
+
+      self.canvas_sig2 = MplCanvas(self, width=5, height=4, dpi=100)
+      self.canvas_hist2 = MplCanvas(self, width=5, height=4, dpi=100)
+
+      right_side_layout.addWidget(self.canvas_sig2, 1, 0)
+      right_side_layout.addWidget(self.canvas_hist2, 1, 1)
 
       right_side_box.setLayout(right_side_layout)
       self.layout.addWidget(right_side_box)
@@ -110,7 +124,7 @@ class MainWindow(QMainWindow):
       except ValueError:
          raise ValueError(f"Nieprawidłowa wartość w jednym z pól: '{text}'")
 
-   def update_plots(self, current_signal, index):
+   # def update_plots(self, current_signal, index):
       if not self.signals_history:
          return
 
@@ -239,4 +253,50 @@ class MainWindow(QMainWindow):
          idx = self.functions_map.index(selected_signal.function)
          self.function_input.setCurrentIndex(idx)
 
-      self.update_plots(selected_signal, row)
+      self.set_signal1()
+
+   def set_signal1(self):
+      row = self.signals_list_widget.currentRow()
+      if row < 0: return
+      self.signal1 = self.signals_history[row]
+      self.update_single_plot(self.signal1, self.canvas_sig1, self.canvas_hist1, self.title_sig1, 1, row)
+
+   def set_signal2(self):
+      row = self.signals_list_widget.currentRow()
+      if row < 0: return
+      self.signal2 = self.signals_history[row]
+      self.update_single_plot(self.signal2, self.canvas_sig2, self.canvas_hist2, self.title_sig2, 2, row)
+
+   def update_single_plot(self, signal, canvas_sig, canvas_hist, title_label, sig_num, list_index):
+
+      if not signal:
+         return
+
+      signal_name = signal.get_signal_name()
+      canvas_sig.axes.cla()
+      discrete_signals = [unit_impulse_signal, impulse_noise]
+
+      if signal.function in discrete_signals:
+         canvas_sig.axes.stem(signal.t, signal.signal, basefmt=" ")
+      else:
+         canvas_sig.axes.plot(signal.t, signal.signal)
+
+      canvas_sig.axes.set_title(f"{signal_name} #{list_index+1}")
+      canvas_sig.axes.set_xlabel("Czas (s)")
+      canvas_sig.axes.set_ylabel("Amplituda")
+      canvas_sig.axes.grid(True)
+      canvas_sig.draw()
+
+      # title_label.setText(f"Sygnał {sig_num}: {signal_name} (#{list_index + 1})")
+
+      canvas_hist.axes.cla()
+      signal_values = signal.get_full_periods()
+
+      bins = int(self.get_input_value(self.bins))
+
+      canvas_hist.axes.hist(signal_values, bins=bins, edgecolor='black', alpha=0.7)
+      canvas_hist.axes.set_title(f"Histogram")
+      canvas_hist.axes.set_xlabel("Wartość Amplitudy")
+      canvas_hist.axes.set_ylabel("Liczba wystąpień")
+      canvas_hist.axes.grid(axis='y', linestyle='--', alpha=0.7)
+      canvas_hist.draw()
