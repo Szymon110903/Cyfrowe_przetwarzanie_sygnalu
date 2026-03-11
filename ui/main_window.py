@@ -1,5 +1,6 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout, QMenu
+from PySide6.QtCore import Qt
 from .canvas_window import MplCanvas
 from logic.Signal import Signal
 from logic.signals_generator import *
@@ -86,6 +87,8 @@ class MainWindow(QMainWindow):
       left_panel_layout.addWidget(QLabel("Historia sygnałów:"))
       self.signals_list_widget = QListWidget()
       self.signals_list_widget.currentRowChanged.connect(self.on_signal_selected)
+      self.signals_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+      self.signals_list_widget.customContextMenuRequested.connect(self.show_context_menu)
       left_panel_layout.addWidget(self.signals_list_widget)
 
       assign_layout = QHBoxLayout()
@@ -181,6 +184,12 @@ class MainWindow(QMainWindow):
       self.canvas_histogram.axes.grid(axis='y', linestyle='--', alpha=0.7)
       self.canvas_histogram.draw()
 
+   def get_sig_name(self, signal):
+      if hasattr(signal, 'name_override'):
+         return signal.name_override
+      name = signal.get_signal_name()
+      return name if name else "Sygnał wynikowy"
+
    def generate_plot(self):
       try:
          A = self.get_input_value(self.a_input)
@@ -202,7 +211,7 @@ class MainWindow(QMainWindow):
          signal = Signal(A=A, d=d, fs=fs, t1=t1, function=selected_function, T=T, kw=kw, ts=ts, p=p)
          self.signals_history.append(signal)
 
-         signal_name = signal.get_signal_name()
+         signal_name = self.get_sig_name(signal)
          self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
          self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
 
@@ -250,7 +259,7 @@ class MainWindow(QMainWindow):
             return
          self.signals_history.append(loaded_signal)
 
-         signal_name = loaded_signal.get_signal_name()
+         signal_name = self.get_sig_name(loaded_signal)
          self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
          self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
          QMessageBox.information(self, "Sukces", f"Pomyślnie wczytano sygnał z pliku {file_name}.")
@@ -299,7 +308,7 @@ class MainWindow(QMainWindow):
       if not signal:
          return
 
-      signal_name = signal.get_signal_name()
+      signal_name = self.get_sig_name(signal)
       canvas_sig.axes.cla()
       discrete_signals = [unit_impulse_signal, impulse_noise]
 
@@ -333,14 +342,17 @@ class MainWindow(QMainWindow):
 
       try:
          new_signal = operations.add_signals(self.signal1, self.signal2)
+         name1 = self.get_sig_name(self.signal1)
+         name2 = self.get_sig_name(self.signal2)
+         signal_name = f"Dodanie {name1} + {name2}"
+         new_signal.name_override = signal_name
+
          self.signals_history.append(new_signal)
-         signal_name = f"Dodanie {self.signal1.get_signal_name()} + {self.signal2.get_signal_name()}"
          self.signals_list_widget.addItem(f"#{len(self.signals_history)} - {signal_name}")
-         # self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
 
          QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie dodane.")
 
-         row = self.signals_list_widget.currentRow()
+         row = len(self.signals_history) - 1
          if row < 0: return
          self.combined_signal = self.signals_history[row]
          self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
@@ -364,7 +376,7 @@ class MainWindow(QMainWindow):
 
          QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie odjęte.")
 
-         row = self.signals_list_widget.currentRow()
+         row = len(self.signals_history) - 1
          if row < 0: return
          self.combined_signal = self.signals_history[row]
          self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
@@ -388,7 +400,7 @@ class MainWindow(QMainWindow):
 
          QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie pomnożone.")
 
-         row = self.signals_list_widget.currentRow()
+         row = len(self.signals_history) - 1
          if row < 0: return
          self.combined_signal = self.signals_history[row]
          self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
@@ -412,7 +424,7 @@ class MainWindow(QMainWindow):
 
          QMessageBox.information(self, "Sukces", "Sygnały zostały pomyślnie podzielone.")
 
-         row = self.signals_list_widget.currentRow()
+         row = len(self.signals_history) - 1
          if row < 0: return
          self.combined_signal = self.signals_history[row]
          self.update_single_plot(self.combined_signal, self.canvas_sig3, self.canvas_hist3, row)
@@ -421,3 +433,47 @@ class MainWindow(QMainWindow):
          QMessageBox.warning(self, "Błąd zgodności sygnałów", str(e))
       except Exception as e:
          QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas dodawania sygnałów:\n{str(e)}")
+
+   def show_context_menu(self, pos):
+      item = self.signals_list_widget.itemAt(pos)
+      if item is None:
+         return
+      menu = QMenu(self)
+      delete_action = menu.addAction("Usuń sygnał")
+      action = menu.exec(self.signals_list_widget.mapToGlobal(pos))
+      if action == delete_action:
+         self.delete_signal(item)
+
+   def delete_signal(self, item):
+      row = self.signals_list_widget.row(item)
+      deleted_signal = self.signals_history.pop(row)
+      self.signals_list_widget.takeItem(row)
+
+      if self.signal1 == deleted_signal:
+         self.signal1 = None
+         self.canvas_sig1.axes.cla()
+         self.canvas_hist1.axes.cla()
+         self.canvas_sig1.draw()
+         self.canvas_hist1.draw()
+
+      if self.signal2 == deleted_signal:
+         self.signal2 = None
+         self.canvas_sig2.axes.cla()
+         self.canvas_hist2.axes.cla()
+         self.canvas_sig2.draw()
+         self.canvas_hist2.draw()
+
+      if self.combined_signal == deleted_signal:
+         self.combined_signal = None
+         self.canvas_sig3.axes.cla()
+         self.canvas_hist3.axes.cla()
+         self.canvas_sig3.draw()
+         self.canvas_hist3.draw()
+
+      if row == 0:
+         self.set_signal1()
+
+      for i in range(self.signals_list_widget.count()):
+         current_item = self.signals_list_widget.item(i)
+         signal_name = self.get_sig_name(self.signals_history[i])
+         current_item.setText(f"#{i+1} - {signal_name}")
