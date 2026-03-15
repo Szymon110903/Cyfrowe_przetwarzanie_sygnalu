@@ -36,7 +36,7 @@ def sinusoidal_signal(A, T, d, fs, t1=0, **kwargs):
 
 def sinusoidal_signal_onehalf_rectified(A, T, d, fs, t1=0, **kwargs):
     _ , t = samples_count(d, fs, t1)
-    signal = A * (np.sin((2 * np.pi / T) * (t - t1)) + np.abs(np.sin((2 * np.pi / T) * (t - t1))))
+    signal = 0.5 * A * (np.sin((2 * np.pi / T) * (t - t1)) + np.abs(np.sin((2 * np.pi / T) * (t - t1))))
     return t, signal
 
 def sinusoidal_signal_twohalf_rectified(A, T, d, fs, t1=0, **kwargs):
