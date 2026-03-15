@@ -129,7 +129,7 @@ class Signal:
             "Wartosc srednia bezwzgledna": absoulute_mean_val,
             "Wartosc skuteczna": effective_value,
             "Wariancja": variance,
-            "Moc srednia": effective_value,
+            "Moc srednia": avg_power,
         }
 
     def print_parameters(self):

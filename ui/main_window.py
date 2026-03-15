@@ -6,6 +6,7 @@ from logic.Signal import Signal
 from logic.signals_generator import *
 from utils.file_manager import save_to_binary, save_to_text, load_from_binary, load_from_text
 import logic.operations as operations
+from PySide6.QtWidgets import QTextEdit 
 
 class MainWindow(QMainWindow):
    def __init__(self):
@@ -118,6 +119,14 @@ class MainWindow(QMainWindow):
       left_panel_layout.addWidget(operations_box)
 
       self.layout.addWidget(left_panel)
+
+      # --- Panel parametrów ---
+      left_panel_layout.addWidget(QLabel("Parametry wybranego sygnału:"))
+      self.params_display = QTextEdit()
+      self.params_display.setReadOnly(True) 
+      self.params_display.setFixedHeight(150)
+      self.params_display.setPlaceholderText("Wygeneruj sygnał, aby zobaczyć parametry...")
+      left_panel_layout.addWidget(self.params_display)
 
       right_side_box = QWidget()
       right_side_layout = QGridLayout()
@@ -304,36 +313,50 @@ class MainWindow(QMainWindow):
       self.update_single_plot(self.signal2, self.canvas_sig2, self.canvas_hist2, row)
 
    def update_single_plot(self, signal, canvas_sig, canvas_hist, list_index):
+    if not signal:
+        return
+    signal_name = self.get_sig_name(signal)
+    canvas_sig.axes.cla()
+    
+    discrete_signals = [unit_impulse_signal, impulse_noise]
 
-      if not signal:
-         return
+    if signal.function in discrete_signals:
+        canvas_sig.axes.stem(signal.t, signal.signal, basefmt=" ")
+    else:
+        canvas_sig.axes.plot(signal.t, signal.signal)
 
-      signal_name = self.get_sig_name(signal)
-      canvas_sig.axes.cla()
-      discrete_signals = [unit_impulse_signal, impulse_noise]
+    canvas_sig.axes.set_title(f"{signal_name} #{list_index+1}")
+    canvas_sig.axes.set_xlabel("Czas (s)")
+    canvas_sig.axes.set_ylabel("Amplituda")
+    canvas_sig.axes.grid(True)
+    canvas_sig.draw()
 
-      if signal.function in discrete_signals:
-         canvas_sig.axes.stem(signal.t, signal.signal, basefmt=" ")
-      else:
-         canvas_sig.axes.plot(signal.t, signal.signal)
+    canvas_hist.axes.cla()
+    signal_values = signal.get_full_periods()
+    
+    try:
+        bins = int(self.get_input_value(self.bins))
+    except (ValueError, TypeError):
+        bins = 10  
 
-      canvas_sig.axes.set_title(f"{signal_name} #{list_index+1}")
-      canvas_sig.axes.set_xlabel("Czas (s)")
-      canvas_sig.axes.set_ylabel("Amplituda")
-      canvas_sig.axes.grid(True)
-      canvas_sig.draw()
+    canvas_hist.axes.hist(signal_values, bins=bins, edgecolor='black', alpha=0.7)
+    canvas_hist.axes.set_title(f"Histogram")
+    canvas_hist.axes.set_xlabel("Wartość Amplitudy")
+    canvas_hist.axes.set_ylabel("Liczba wystąpień")
+    canvas_hist.axes.grid(axis='y', linestyle='--', alpha=0.7)
+    canvas_hist.draw()
 
-      canvas_hist.axes.cla()
-      signal_values = signal.get_full_periods()
-
-      bins = int(self.get_input_value(self.bins))
-
-      canvas_hist.axes.hist(signal_values, bins=bins, edgecolor='black', alpha=0.7)
-      canvas_hist.axes.set_title(f"Histogram")
-      canvas_hist.axes.set_xlabel("Wartość Amplitudy")
-      canvas_hist.axes.set_ylabel("Liczba wystąpień")
-      canvas_hist.axes.grid(axis='y', linestyle='--', alpha=0.7)
-      canvas_hist.draw()
+    params = signal.calculate_parameters()
+    
+    if params and hasattr(self, 'params_display'):
+        text = f"PARAMETRY STATYSTYCZNE SYGNAŁU #{list_index + 1}\n"
+        text += f"Nazwa: {signal_name}\n"
+        text += "=" * 35 + "\n"
+        
+        for key, value in params.items():
+            text += f"{key:<28}: {value:.4f}\n"
+        
+        self.params_display.setText(text)
 
    def add_selected_signals(self):
       if self.signal1 is None or self.signal2 is None:
