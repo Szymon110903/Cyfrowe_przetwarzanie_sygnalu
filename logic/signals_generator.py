@@ -25,7 +25,7 @@ def uniform_noise(A, d, fs, t1 =0, **kwargs):
 
 def gaussian_noise(A, d, fs, t1 =0, **kwargs):
     samples, t = samples_count(d, fs, t1)
-    signal =A* np.random.normal(0, A, size=samples)
+    signal =np.random.normal(0, A, size=samples)
     return t, signal
 
 def sinusoidal_signal(A, T, d, fs, t1=0, **kwargs):
@@ -65,7 +65,14 @@ def triangle_wave_signal(A, T, d, kw, fs, t1=0, **kwargs):
     _, t = samples_count(d, fs, t1)
 
     time_in_period = (t - t1) % T
-    signal = np.where(time_in_period < (kw * T), A/(kw*T)*time_in_period, -A/((1-kw)*T)*(time_in_period - kw*T) + A)
+    denom_rise = max(kw * T, 1e-10)
+    denom_fall = max((1 - kw) * T, 1e-10)
+
+    signal = np.where(
+        time_in_period < (kw * T), 
+        A / denom_rise * time_in_period, 
+        -A / denom_fall * (time_in_period - kw * T) + A
+)
     return t, signal
 
 def unit_step_signal(A, ts, d, fs, t1=0, **kwargs):
