@@ -12,7 +12,6 @@ class MainWindow(QMainWindow):
    def __init__(self):
       super().__init__()
       self.setWindowTitle("Signal Generator")
-      # self.resize(1600, 1000)
       main_widget = QWidget()
       self.setCentralWidget(main_widget)
       self.layout = QHBoxLayout(main_widget)
@@ -35,6 +34,7 @@ class MainWindow(QMainWindow):
       names = ["Sygnał o rozkładzie jednostajnym", "Sygnał o rozkładzie normalnym", "Sygnał sinusoidalny", "Sygnał sinusoidalny z dodatnią częścią", "Sygnał sinusoidalny z dodatnią częścią prostowaną", "Sygnał prostokątny",
                "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy"]
 
+      # Lewy panel dla ustawień parametrów sygnałow, historii sygnałów oraz operacji i ich wyników
       left_panel = QWidget()
       left_panel.setFixedWidth(360)
       left_panel_layout = QVBoxLayout(left_panel)
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
       left_panel_layout.addWidget(QLabel("Historia sygnałów:"))
       self.signals_list_widget = QListWidget()
       self.signals_list_widget.currentRowChanged.connect(self.on_signal_selected)
-      self.signals_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+      self.signals_list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
       self.signals_list_widget.customContextMenuRequested.connect(self.show_context_menu)
       left_panel_layout.addWidget(self.signals_list_widget)
 
@@ -161,38 +161,6 @@ class MainWindow(QMainWindow):
       except ValueError:
          raise ValueError(f"Nieprawidłowa wartość w jednym z pól: '{text}'")
 
-   # def update_plots(self, current_signal, index):
-      if not self.signals_history:
-         return
-
-      signal_name = current_signal.get_signal_name()
-
-      self.canvas_signal.axes.cla()
-
-      discrete_signals = [unit_impulse_signal, impulse_noise]
-      if current_signal.function in discrete_signals:
-         self.canvas_signal.axes.stem(current_signal.t, current_signal.signal, basefmt=" ")
-      else:
-         self.canvas_signal.axes.plot(current_signal.t, current_signal.signal)
-
-      self.canvas_signal.axes.set_title(signal_name)
-      self.canvas_signal.axes.set_xlabel("Czas (s)")
-      self.canvas_signal.axes.set_ylabel("Amplituda")
-      self.canvas_signal.axes.grid(True)
-      self.canvas_signal.draw()
-      self.plot_title_label.setText(f"Wyświetlam: {signal_name}, Sygnał #{index + 1}")
-
-      self.canvas_histogram.axes.cla()
-      signal_values = current_signal.get_full_periods()
-      bins = int(self.get_input_value(self.bins))
-
-      self.canvas_histogram.axes.hist(signal_values, bins=bins, edgecolor="black")
-      self.canvas_histogram.axes.set_title(f"Histogram - {signal_name}")
-      self.canvas_histogram.axes.set_xlabel("Wartość Amplitudy")
-      self.canvas_histogram.axes.set_ylabel("Liczba wystąpień")
-      self.canvas_histogram.axes.grid(axis='y', linestyle='--', alpha=0.7)
-      self.canvas_histogram.draw()
-
    def get_sig_name(self, signal):
       if hasattr(signal, 'name_override'):
          return signal.name_override
@@ -209,7 +177,7 @@ class MainWindow(QMainWindow):
          kw = self.get_input_value(self.kw_input)
          ts = self.get_input_value(self.ts_input)
          p = self.get_input_value(self.p_input)
-         bins = int(self.get_input_value(self.bins))
+         # bins = int(self.get_input_value(self.bins))
 
          func_idx = self.function_input.currentIndex()
          selected_function = self.functions_map[func_idx]

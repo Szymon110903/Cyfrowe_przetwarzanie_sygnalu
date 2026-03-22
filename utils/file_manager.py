@@ -1,6 +1,5 @@
 # struct - wysoka wydajność, tworzenie nagłowków,
 import struct
-import numpy as np
 import logic.Signal as Signal
 import os
 from logic.signals_generator import *

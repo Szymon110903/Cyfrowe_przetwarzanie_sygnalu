@@ -1,12 +1,8 @@
-import numpy as np
-from utils.plots import *
 from logic.signals_generator import *
-
 """"
 Klasa reprezentująca sygnał, która przechowuje jego parametry, generuje sygnał.
 W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwantowanie, analiza sygnału itp.
 """
-
 class Signal:
     def __init__(self, A, d, fs=1, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None, p=None):
         self.A = A # amplituda sygnału
@@ -38,9 +34,6 @@ class Signal:
             self.calculate_parameters()
         else:
             raise ValueError("Niepoprawne parametry sygnału.")
-
-    def print_variables(self):
-        print(f"Parametry sygnału: A={self.A}, d={self.d}, fs={self.fs}, t1={self.t1}, function={self.get_signal_name()}, T={self.T}, kw={self.kw}, ts={self.ts}, p={self.p}")
 
     def generate_signal(self):
         if self.function is None:
@@ -96,17 +89,6 @@ class Signal:
 
         return self.signal
 
-    """" Rozbicie funkcji visualise na visualise i visualise histogram"""
-    def visualize(self):
-        discrete_signals = [unit_impulse_signal, impulse_noise]
-        is_discrete = self.function in discrete_signals
-        plot_signal(self.t, self.signal, title=self.get_signal_name(), discrete=is_discrete)
-
-    def visualize_histogram(self, bins=10):
-        title = f"{self.get_signal_name()} - Histogram"
-        signal_values = self.get_full_periods()
-        plot_histogram(signal_values, bins=bins, title=title)
-
     def calculate_parameters(self):
         signal = self.get_full_periods()
         if len(signal) == 0:
@@ -131,13 +113,3 @@ class Signal:
             "Wariancja": variance,
             "Moc srednia": avg_power,
         }
-
-    def print_parameters(self):
-        parameters = self.calculate_parameters()
-
-        if parameters is not None:
-            print(f"--- Wyliczone parametry dla: {self.get_signal_name()} ---")
-            for name, value in parameters.items():
-                print(f"{name}: {value:.4f}")
-        else:
-            print("Sygnał jest pusty")
