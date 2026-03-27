@@ -18,6 +18,8 @@ def samples_count(d, fs, t1 =0, **kwargs):
     t = t1 + n / fs
     return samples, t
 
+print(samples_count(10, 10, 0))
+
 def uniform_noise(A, d, fs, t1 =0, **kwargs):
     samples, t = samples_count(d, fs, t1, **kwargs)
     signal = np.random.uniform(-A, A, size=samples)

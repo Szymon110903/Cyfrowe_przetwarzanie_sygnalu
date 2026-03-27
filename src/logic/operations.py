@@ -1,4 +1,4 @@
-import logic.Signal as Signal
+import src.logic.Signal as Signal
 import numpy as np
 
 def check_compatibility(signal1, signal2):

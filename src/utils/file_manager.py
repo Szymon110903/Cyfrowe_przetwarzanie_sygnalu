@@ -1,8 +1,8 @@
 # struct - wysoka wydajność, tworzenie nagłowków,
 import struct
-import logic.Signal as Signal
+import src.logic.Signal as Signal
 import os
-from logic.signals_generator import *
+from src.logic.signals_generator import *
 
 DIR = "signals/"
 ID_TO_FUNC = {

@@ -1,4 +1,4 @@
-from logic.signals_generator import *
+from src.logic.signals_generator import *
 """"
 Klasa reprezentująca sygnał, która przechowuje jego parametry, generuje sygnał.
 W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwantowanie, analiza sygnału itp.

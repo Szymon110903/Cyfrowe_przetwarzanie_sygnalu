@@ -2,10 +2,10 @@ import os
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout, QMenu
 from PySide6.QtCore import Qt
 from .canvas_window import MplCanvas
-from logic.Signal import Signal
-from logic.signals_generator import *
-from utils.file_manager import save_to_binary, save_to_text, load_from_binary, load_from_text
-import logic.operations as operations
+from src.logic.Signal import Signal
+from src.logic.signals_generator import *
+from src.utils.file_manager import save_to_binary, save_to_text, load_from_binary, load_from_text
+import src.logic.operations as operations
 from PySide6.QtWidgets import QTextEdit 
 
 class MainWindow(QMainWindow):
