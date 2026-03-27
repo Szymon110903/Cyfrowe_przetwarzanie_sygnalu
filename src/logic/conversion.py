@@ -18,3 +18,52 @@ def quantization_with_clipping(signal_sampled: np.ndarray, bit_depth: int = 8) -
     step = (np.subtract(max_val, min_val)) / (levels - 1)
     quantized_signal = np.floor((signal_sampled - min_val) / step) * step + min_val
     return quantized_signal
+
+# Todo: Zapytać czy interpolacje mamy sami implementowac czy mozna skorzystsac z gotowców
+# Tutaj rekonstrukcja (R2) pierwszego rzedu za pomoca numpy
+# def first_order_hold_reconstruction(signal_sampled: np.ndarray, t_sampled: np.ndarray, t_continous: np.ndarray) -> np.ndarray:
+#     reconstructed_signal = np.interp(t_continous, t_sampled, signal_sampled)
+#     return reconstructed_signal
+
+def first_order_hold_reconstruction(signal_sampled: np.ndarray, t_sampled: np.ndarray, t_continous: np.ndarray) -> np.ndarray:
+    reconstructed = np.zeros_like(t_continous)
+
+    for i, t in enumerate(t_continous):
+        if t <= t_sampled[0]:
+            reconstructed[i] = signal_sampled[0]
+        elif t >= t_sampled[-1]:
+            reconstructed[i] = signal_sampled[-1]
+        else:
+            idx = np.searchsorted(t_sampled, t)
+            t0,t1 = t_sampled[idx - 1], t_sampled[idx]
+            y0,y1 = signal_sampled[idx - 1], signal_sampled[idx]
+
+            reconstructed[i] = y0 + (y1 - y0) * (t - t0) / (t1 - t0)
+    return reconstructed
+
+def sinc_reconstruction(signal_sampled: np.ndarray, t_sampled: np.ndarray, t_continous: np.ndarray, num_neighbours: int = None) -> np.ndarray:
+    if len(t_sampled) < 2:
+        return signal_sampled
+
+    Ts = t_sampled[1] - t_sampled[0]
+    reconstructed = np.zeros_like(t_continous)
+    if num_neighbours is None:
+        for n, x_n in enumerate(signal_sampled):
+            t = (t_continous - t_sampled[n]) / Ts
+
+            sinc_values = np.where(t == 0, 1.0, np.sin(np.pi * t) / (np.pi * t))
+            reconstructed += x_n * sinc_values
+    else :
+        for i, t in enumerate(t_continous):
+            idx = np.searchsorted(t_sampled, t)
+            start_idx = max(0, int(idx - num_neighbours))
+            end_idx = min(len(t_sampled), int(idx + num_neighbours))
+
+            t_window = t_sampled[start_idx:end_idx]
+            sig_window = signal_sampled[start_idx:end_idx]
+
+            t_arg = (t - t_window) / Ts
+            sinc_values = np.where(t_arg == 0, 1.0, np.sin(np.pi * t_arg) / (np.pi * t_arg))
+            reconstructed[i] = np.sum(sig_window * sinc_values)
+
+    return reconstructed
