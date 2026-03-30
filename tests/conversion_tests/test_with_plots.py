@@ -10,8 +10,8 @@ class TestConversionPipeline(unittest.TestCase):
     def setUp(self):
         self.f_continous = 1000
         self.A = 1
-        self.d = 0.5
-        self.T = 1
+        self.d = 1
+        self.T = 0.5
         self.fs = 20
         self.bit_depth = 8
 

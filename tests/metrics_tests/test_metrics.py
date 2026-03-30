@@ -35,5 +35,13 @@ class TestMetrics(unittest.TestCase):
         md = calculate_MD(self.original, processed)
         self.assertEqual(md, 10)
 
+    def test_enob(self):
+        enob_perfect = calculate_ENOB(self.original, self.processed_perfect)
+        self.assertEqual(enob_perfect, float('inf'))
+
+        enob_noisy = calculate_ENOB(self.original, self.processed_noisy)
+        expected_enob = (0 - 1.76) / 6.02
+        self.assertAlmostEqual(enob_noisy, expected_enob, places=5)
+
 if __name__ == '__main__':
     unittest.main()
