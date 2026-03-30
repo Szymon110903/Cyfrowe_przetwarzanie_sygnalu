@@ -1,5 +1,6 @@
 import os
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout, QMenu
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, \
+    QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout, QMenu, QTabWidget
 from PySide6.QtCore import Qt
 from .canvas_window import MplCanvas
 from src.logic.Signal import Signal
@@ -12,9 +13,8 @@ class MainWindow(QMainWindow):
    def __init__(self):
       super().__init__()
       self.setWindowTitle("Signal Generator")
-      main_widget = QWidget()
-      self.setCentralWidget(main_widget)
-      self.layout = QHBoxLayout(main_widget)
+      self.tabs = QTabWidget()
+      self.setCentralWidget(self.tabs)
 
       self.signal1 = None
       self.signal2 = None
@@ -28,12 +28,26 @@ class MainWindow(QMainWindow):
             unit_step_signal, unit_impulse_signal, impulse_noise
         ]
 
-      self.createWidgets()
+      # self.createWidgets()
+      self.create_tabs()
 
-   def createWidgets(self):
+   def create_tabs(self):
+      # Zakładka 1
+      self.tab_operations = QWidget()
+      self.setup_operations_tab()
+      self.tabs.addTab(self.tab_operations, "Generowanie i Operacje")
+
+      # Zakładka 2
+      # Jak na razie pusta
+      self.tab_conversion = QWidget()
+      self.setup_conversion_tab()
+      self.tabs.addTab(self.tab_conversion, "Próbkowanie i Kwantyzacja")
+
+   def setup_operations_tab(self):
       names = ["Sygnał o rozkładzie jednostajnym", "Sygnał o rozkładzie normalnym", "Sygnał sinusoidalny", "Sygnał sinusoidalny z dodatnią częścią", "Sygnał sinusoidalny z dodatnią częścią prostowaną", "Sygnał prostokątny",
                "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy"]
 
+      tab1_layout = QHBoxLayout(self.tab_operations)
       # Lewy panel dla ustawień parametrów sygnałow, historii sygnałów oraz operacji i ich wyników
       left_panel = QWidget()
       left_panel.setFixedWidth(360)
@@ -118,8 +132,6 @@ class MainWindow(QMainWindow):
       operations_box.setLayout(operations_layout)
       left_panel_layout.addWidget(operations_box)
 
-      self.layout.addWidget(left_panel)
-
       # --- Panel parametrów ---
       left_panel_layout.addWidget(QLabel("Parametry wybranego sygnału:"))
       self.params_display = QTextEdit()
@@ -150,7 +162,35 @@ class MainWindow(QMainWindow):
       right_side_layout.addWidget(self.canvas_hist3, 2, 1)
 
       right_side_box.setLayout(right_side_layout)
-      self.layout.addWidget(right_side_box)
+
+      tab1_layout.addWidget(left_panel)
+      tab1_layout.addWidget(right_side_box)
+
+   def setup_conversion_tab(self):
+      layout = QHBoxLayout(self.tab_conversion)
+
+      left_panel = QWidget()
+      left_panel.setFixedWidth(360)
+      left_layout = QVBoxLayout(left_panel)
+
+      settings_box = QGroupBox("Parametry Konwersji (A/C i C/A)")
+      form = QFormLayout()
+
+      settings_box.setLayout(form)
+      left_layout.addWidget(settings_box)
+
+      left_layout.addWidget(QLabel("Błędy konwersji (Miary podobieństwa):"))
+      self.metrics_display = QTextEdit()
+      self.metrics_display.setReadOnly(True)
+      left_layout.addWidget(self.metrics_display)
+
+      layout.addWidget(left_panel)
+
+      right_panel = QWidget()
+      right_layout = QVBoxLayout(right_panel)
+
+
+      layout.addWidget(right_panel)
 
    def get_input_value(self, line_edit):
       text=line_edit.text().strip()
