@@ -4,7 +4,7 @@ Klasa reprezentująca sygnał, która przechowuje jego parametry, generuje sygna
 W przyszłości może być rozszerzona o dodatkowe metody, próbkowanie i kwantowanie, analiza sygnału itp.
 """
 class Signal:
-    def __init__(self, A, d, fs=1, t1=0, function=None, T=None, kw=None, ts=None, t = None, signal=None, p=None):
+    def __init__(self, A, d, fs=1, t1=0, function=None, f=None, kw=None, ts=None, t = None, signal=None, p=None):
         self.A = A # amplituda sygnału
         self.d = d # czas trwania sygnału
         self.fs = fs # częstotliwość próbkowania
@@ -12,7 +12,7 @@ class Signal:
         self.function = function # funkcja generująca sygnał
 
         """" Bazowo None - tylko dla sygnałów okresowych i skokowych """
-        self.T = T # okres sygnału
+        self.f = f # częstotliwość sygnału
         self.kw = kw # współczynnik wypełnienia dla sygnałów prostokątnych i trójkątnych
         self.ts = ts # czas skoku jednostkowego dla sygnału skokowego
         """" Parametr wykorzystywany w szumie impulsowym standardowo None"""
@@ -44,7 +44,7 @@ class Signal:
                 'd': self.d,
                 'fs': self.fs,
                 't1': self.t1,
-                'T': self.T,
+                'f': self.f,
                 'kw': self.kw,
                 'ts': self.ts,
                 'p': self.p
@@ -78,10 +78,11 @@ class Signal:
             sinusoidal_signal_twohalf_rectified, square_wave_signal,
             square_wave_signal_symetrical, triangle_wave_signal
         ]
-        if self.T is not None and self.function in periodic_signals:
-            full_periods = int(self.d // self.T)
+        if self.f is not None and self.function in periodic_signals:
+            T = 1.0 / self.f
+            full_periods = int(self.d // T)
             if full_periods > 0:
-                time_to_keep = full_periods * self.T
+                time_to_keep = full_periods * T
                 samples_to_keep = int(np.round(time_to_keep * self.fs))
                 return self.signal[:samples_to_keep]
             else:

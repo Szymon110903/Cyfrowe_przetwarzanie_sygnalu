@@ -28,42 +28,44 @@ def gaussian_noise(A, d, fs, t1 =0, **kwargs):
     signal =np.random.normal(0, A, size=samples)
     return t, signal
 
-def sinusoidal_signal(A, T, d, fs, t1=0, **kwargs):
+def sinusoidal_signal(A, f, d, fs, t1=0, **kwargs):
     _ , t = samples_count(d, fs, t1)
     # Wzór: x(t) = A * sin( (2 * PI / T) * (t - t1) )
-    signal = A * np.sin((2 * np.pi / T) * (t - t1))
+    signal = A * np.sin((2 * np.pi * f) * (t - t1))
     return t, signal
 
-def sinusoidal_signal_onehalf_rectified(A, T, d, fs, t1=0, **kwargs):
+def sinusoidal_signal_onehalf_rectified(A, f, d, fs, t1=0, **kwargs):
     _ , t = samples_count(d, fs, t1)
-    signal = 0.5 * A * (np.sin((2 * np.pi / T) * (t - t1)) + np.abs(np.sin((2 * np.pi / T) * (t - t1))))
+    signal = 0.5 * A * (np.sin((2 * np.pi * f) * (t - t1)) + np.abs(np.sin((2 * np.pi * f) * (t - t1))))
     return t, signal
 
-def sinusoidal_signal_twohalf_rectified(A, T, d, fs, t1=0, **kwargs):
+def sinusoidal_signal_twohalf_rectified(A, f, d, fs, t1=0, **kwargs):
     _ , t = samples_count(d, fs, t1)
     # Wzór: x(t) = A * sin( (2 * PI / T) * (t - t1) )
-    signal = A * np.abs(np.sin((2 * np.pi / T) * (t - t1)))
+    signal = A * np.abs(np.sin((2 * np.pi * f) * (t - t1)))
     return t, signal
 
-def square_wave_signal(A, T, d, kw, fs, t1=0, **kwargs):
+def square_wave_signal(A, f, d, kw, fs, t1=0, **kwargs):
     _, t = samples_count(d, fs, t1)
 
     # Jeśli czas wewnątrz okresu jest mniejszy niż (kw * T), dajemy A, w przeciwnym razie 0
     # (t-t1) % T czas wewnątrz okresu - do określenia czy faza wysoka czy niska
+    T = 1.0 / f
     signal = np.where((t - t1) % T < (kw * T), A, 0.0)
     return t, signal
 
-def square_wave_signal_symetrical(A, T, d, kw, fs, t1=0, **kwargs):
+def square_wave_signal_symetrical(A, f, d, kw, fs, t1=0, **kwargs):
     _, t = samples_count(d, fs, t1)
 
     # jeśli czas okresu < (kw * T), to stan A, w przeciwnym razie -A
     # (t-t1) % T czas wewnątrz okresu - do określenia czy faza wysoka czy niska
+    T = 1.0 / f
     signal = np.where((t - t1) % T < (kw * T), A, -A)
     return t, signal
 
-def triangle_wave_signal(A, T, d, kw, fs, t1=0, **kwargs):
+def triangle_wave_signal(A, f, d, kw, fs, t1=0, **kwargs):
     _, t = samples_count(d, fs, t1)
-
+    T = 1.0 / f
     time_in_period = (t - t1) % T
     denom_rise = max(kw * T, 1e-10)
     denom_fall = max((1 - kw) * T, 1e-10)

@@ -43,7 +43,7 @@ def save_to_binary(filename, signal):
         float(signal.d),
         float(signal.fs),
         float(signal.t1),
-        float(signal.T) if signal.T is not None else -1.0,
+        float(signal.f) if signal.f is not None else -1.0,
         float(signal.kw) if signal.kw is not None else -1.0,
         float(signal.ts) if signal.ts is not None else -1.0,
         float(signal.p) if signal.p is not None else -1.0,
@@ -65,7 +65,7 @@ def load_from_binary(filename):
         # odczyt nagłówka - 72 bajty
         header_data = f.read(72)
         # rozpakowanie nagłówka
-        A, d, fs, t1, T, kw, ts, p, function_id = struct.unpack('ddddddddd', header_data)
+        A, d, fs, t1, f, kw, ts, p, function_id = struct.unpack('ddddddddd', header_data)
 
         data = f.read() # doczyt surowego ciągu bajtów danych sygnału
         signal_values = np.frombuffer(data, dtype=np.float64) # konwersja bajtów na tablice, dzielenie na 8 bajtów, - odczyt jako float64
@@ -76,14 +76,14 @@ def load_from_binary(filename):
 
         # konwersja wartości None w sygnale
         A = A if A != -1.0 else None
-        T = T if T != -1.0 else None
+        f = f if f != -1.0 else None
         kw = kw if kw != -1.0 else None
         ts = ts if ts != -1.0 else None
         p = p if p != -1.0 else None
 
         # mapowanie function_id na funkcję generującą sygnał
         function = ID_TO_FUNC.get(int(function_id))
-        signal = Signal.Signal(A, d, fs, t1, function=function, T=T, kw=kw, ts=ts, p=p, t=t, signal=signal_values)
+        signal = Signal.Signal(A, d, fs, t1, function=function, f=f, kw=kw, ts=ts, p=p, t=t, signal=signal_values)
 
     return signal
 
@@ -97,7 +97,7 @@ def save_to_text(filename, signal):
         float(signal.d),
         float(signal.fs),
         float(signal.t1),
-        float(signal.T) if signal.T is not None else -1.0,
+        float(signal.f) if signal.f is not None else -1.0,
         float(signal.kw) if signal.kw is not None else -1.0,
         float(signal.ts) if signal.ts is not None else -1.0,
         float(signal.p) if signal.p is not None else -1.0,
@@ -114,7 +114,7 @@ def load_from_text(filename):
     path = get_path(filename)
     with open(path, 'r') as f:
         header_line = f.readline().strip()
-        A, d, fs, t1, T, kw, ts, p, function_id = map(float, header_line.split())
+        A, d, fs, t1, f_val, kw, ts, p, function_id = map(float, header_line.split())
 
         signal_values = []
         t_values = []
@@ -124,13 +124,13 @@ def load_from_text(filename):
             signal_values.append(s_val)
 
         A = A if A != -1.0 else None
-        T = T if T != -1.0 else None
+        f_val = f_val if f_val != -1.0 else None
         kw = kw if kw != -1.0 else None
         ts = ts if ts != -1.0 else None
         p = p if p != -1.0 else None
 
         function = ID_TO_FUNC.get(int(function_id))
-        signal = Signal.Signal(A, d, fs, t1, function=function, T=T, kw=kw, ts=ts, p=p, t=np.array(t_values), signal=np.array(signal_values))
+        signal = Signal.Signal(A, d, fs, t1, function=function, f=f_val, kw=kw, ts=ts, p=p, t=np.array(t_values), signal=np.array(signal_values))
 
     return signal
 

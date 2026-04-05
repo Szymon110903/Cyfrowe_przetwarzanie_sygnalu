@@ -8,7 +8,6 @@ def calculate_SNR(original: np.ndarray, reconstructed: np.ndarray) -> float:
     if denominator == 0:
         return float('inf')
     numerator = np.sum(original ** 2)
-    # return 10 * np.log10(numerator) -  np.log10(denominator)
     return 10 * np.log10(np.divide(numerator, denominator))
 
 def calculate_PSNR(original: np.ndarray, reconstructed: np.ndarray) -> float:
