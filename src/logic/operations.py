@@ -85,7 +85,6 @@ def division_signals_with_epsilon(signal1, signal2, epsilon=1e-10):
     )
     return new_signal
 
-
 def division_signals(signal1, signal2):
     check_compatibility(signal1, signal2)
     new_signal = Signal.Signal(
@@ -103,3 +102,32 @@ def division_signals(signal1, signal2):
         signal=np.where(signal2.signal != 0, signal1.signal / signal2.signal, 0)
     )
     return new_signal
+
+def convolution(discrete1 , discrete2):
+   h = discrete1.signal
+   x = discrete2.signal
+   M = len(h)
+   N = len(x)
+   new_length = M + N - 1
+   result_signal = np.zeros(new_length)
+
+   for n in range(new_length):
+      for k in range(M):
+         if 0 <= n-k < N:
+            result_signal[n] += h[k] * x[n-k]
+
+   fs = discrete1.fs
+   t1_new = discrete1.t1 + discrete2.t1
+   t_new = t1_new + np.arange(new_length) / fs
+
+   new_signal = Signal.Signal(
+      A=None,
+      d=new_length / fs,
+      fs=fs,
+      t1=t1_new,
+      t=t_new,
+      signal=result_signal
+   )
+   new_signal.name_override = f"Splot ({getattr(discrete1, 'name_override', 'h')} * {getattr(discrete2, 'name_override', 'x')})"
+
+   return new_signal
