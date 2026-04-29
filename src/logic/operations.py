@@ -131,3 +131,31 @@ def convolution(discrete1 , discrete2):
    new_signal.name_override = f"Splot ({getattr(discrete1, 'name_override', 'h')} * {getattr(discrete2, 'name_override', 'x')})"
 
    return new_signal
+
+def correlate_signals_direct(signal_h, signal_x):
+   h = signal_h.signal
+   x = signal_x.signal
+
+   M = len(h)
+   N = len(x)
+   output_length = M + N - 1
+   result_signal = np.zeros(output_length)
+   for i in range(output_length):
+      shift = i - (N - 1)
+      for k in range(M):
+         if 0 <= k-shift < N:
+            result_signal[i] += h[k] * x[k-shift]
+   fs = signal_h.fs
+   t_new = np.arange(output_length) / fs
+   new_signal = Signal.Signal(A=None, d=output_length / fs, fs=fs, t1=0, t=t_new, signal=result_signal)
+   new_signal.name_override = f"Korelacja bezpośrednia ({getattr(signal_h, 'name_override', 'h')}, {getattr(signal_x, 'name_override', 'x')})"
+   return new_signal
+
+def correlate_signals_convolution(signal_h, signal_x):
+   x_reversed = signal_x.signal[::-1]
+   sig_x_reversed = Signal.Signal(A=signal_x.A, d=signal_x.d, fs=signal_x.fs, t1=signal_x.t1, t=signal_x.t, signal=x_reversed)
+
+   result_signal = convolution(signal_h, sig_x_reversed)
+   result_signal.t = np.arange(len(result_signal.signal)) / result_signal.fs
+   result_signal.name_override = f"Korelacja splotem ({getattr(signal_h, 'name_override', 'h')}, {getattr(signal_x, 'name_override', 'x')})"
+   return result_signal
