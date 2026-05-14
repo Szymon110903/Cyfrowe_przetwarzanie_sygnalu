@@ -6,6 +6,7 @@ from .canvas_window import MplCanvas
 from src.logic.Signal import Signal
 from src.logic.signals_generator import *
 from src.utils.file_manager import save_to_binary, save_to_text, load_from_binary, load_from_text
+from src.logic.radar import RadarSimulator
 import src.logic.operations as operations
 import src.logic.conversion as conversion
 import src.logic.metrics as metrics
@@ -39,6 +40,10 @@ class MainWindow(QMainWindow):
       self.tab_conversion = QWidget()
       self.setup_conversion_tab()
       self.tabs.addTab(self.tab_conversion, "Próbkowanie i Kwantyzacja")
+
+      self.tab_radar = QWidget()
+      self.setup_radar_tab()
+      self.tabs.addTab(self.tab_radar, "Radar / Korelacja")
 
       self.signals_list_widget.currentRowChanged.connect(self.sync_lists)
       self.conversion_signals_list.currentRowChanged.connect(self.sync_lists)
@@ -227,6 +232,37 @@ class MainWindow(QMainWindow):
       right_layout.addWidget(self.canvas_ca)
 
       layout.addWidget(right_panel)
+
+   def setup_radar_tab(self):
+      layout = QHBoxLayout(self.tab_radar)
+      left_panel = QWidget()
+      left_panel.setFixedWidth(360)
+      left_layout = QVBoxLayout(left_panel)
+
+      settings_box = QGroupBox("Parametry Radaru")
+      form = QFormLayout()
+
+      self.radar_v_input = QLineEdit("300")
+      self.radar_target_v_input = QLineEdit("-15")
+      self.radar_init_dist_input = QLineEdit("50")
+      self.radar_fs_input = QLineEdit("1000")
+      self.radar_buffer_input = QLineEdit("1000")
+      self.radar_report_input = QLineEdit("1.0")
+
+      form.addRow("Prędkość fali V [m/s]:", self.radar_v_input)
+      form.addRow("Prędkość obiektu [m/s]:", self.radar_target_v_input)
+      form.addRow("Początkowa odległość [m]:", self.radar_init_dist_input)
+      form.addRow("Częstotliwość próbkowania fs:", self.radar_fs_input)
+      form.addRow("Długość bufora (próbki):", self.radar_buffer_input)
+      form.addRow("Okres raportowania [s]:", self.radar_report_input)
+
+      self.radar_step_btn = QPushButton("Wykonaj krok symulacji")
+      self.radar_step_btn.clicked.connect(lambda a: a)
+      self.radar_reset_btn = QPushButton("Resetuj symulator")
+      self.radar_reset_btn.clicked.connect(lambda a: a)
+
+      form.addRow(self.radar_step_btn)
+      form.addRow(self.radar_reset_btn)
 
    def perform_conversion(self):
       row = self.signals_list_widget.currentRow()
