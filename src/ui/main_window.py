@@ -264,6 +264,31 @@ class MainWindow(QMainWindow):
       form.addRow(self.radar_step_btn)
       form.addRow(self.radar_reset_btn)
 
+      settings_box.setLayout(form)
+      left_layout.addWidget(settings_box)
+
+      left_layout.addWidget(QLabel("Wyniki pomiarów"))
+      self.radar_log_display = QTextEdit()
+      self.radar_log_display.setReadOnly(True)
+      left_layout.addWidget(self.radar_log_display)
+
+      layout.addWidget(left_panel)
+
+      # Wykresy
+      right_panel = QWidget()
+      right_layout = QVBoxLayout(right_panel)
+
+      self.canvas_radar_sent = MplCanvas(self, width=5, height=2, dpi=100)
+      self.canvas_radar_recv = MplCanvas(self, width=5, height=2, dpi=100)
+      self.canvas_radar_corr = MplCanvas(self, width=5, height=3, dpi=100)
+
+      right_layout.addWidget(self.canvas_radar_sent)
+      right_layout.addWidget(self.canvas_radar_recv)
+      right_layout.addWidget(self.canvas_radar_corr)
+
+      layout.addWidget(right_panel)
+      self.radar_simulator = None
+
    def perform_conversion(self):
       row = self.signals_list_widget.currentRow()
       if row < 0:
