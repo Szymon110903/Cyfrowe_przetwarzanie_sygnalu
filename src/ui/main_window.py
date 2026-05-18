@@ -10,6 +10,7 @@ from src.logic.radar import RadarSimulator
 import src.logic.operations as operations
 import src.logic.conversion as conversion
 import src.logic.metrics as metrics
+import src.logic.filters as filters
 from PySide6.QtWidgets import QTextEdit 
 
 class MainWindow(QMainWindow):
@@ -41,23 +42,32 @@ class MainWindow(QMainWindow):
       self.setup_conversion_tab()
       self.tabs.addTab(self.tab_conversion, "Próbkowanie i Kwantyzacja")
 
+      self.tab_filter = QWidget()
+      self.setup_filter_tab()
+      self.tabs.addTab(self.tab_filter, "Filtracja")
+
       self.tab_radar = QWidget()
       self.setup_radar_tab()
       self.tabs.addTab(self.tab_radar, "Radar / Korelacja")
 
       self.signals_list_widget.currentRowChanged.connect(self.sync_lists)
       self.conversion_signals_list.currentRowChanged.connect(self.sync_lists)
+      self.filter_signals_list.currentRowChanged.connect(self.sync_lists)
 
    def sync_lists(self, row):
       if self.signals_list_widget.currentRow() != row:
          self.signals_list_widget.setCurrentRow(row)
       if self.conversion_signals_list.currentRow() != row:
          self.conversion_signals_list.setCurrentRow(row)
+      if hasattr(self, 'filter_signals_list') and self.filter_signals_list.currentRow() != row:
+         self.filter_signals_list.setCurrentRow(row)
 
    def add_signal_to_lists(self, signal_name):
       display_text = f"#{len(self.signals_history)} - {signal_name}"
       self.signals_list_widget.addItem(display_text)
       self.conversion_signals_list.addItem(display_text)
+      if hasattr(self, 'filter_signals_list'):
+         self.filter_signals_list.addItem(display_text)
       self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
 
    def setup_operations_tab(self):
@@ -233,6 +243,107 @@ class MainWindow(QMainWindow):
 
       layout.addWidget(right_panel)
 
+   def setup_filter_tab(self):
+      layout = QHBoxLayout(self.tab_filter)
+      left_panel = QWidget()
+      left_panel.setFixedWidth(360)
+      left_layout = QVBoxLayout(left_panel)
+
+      left_layout.addWidget(QLabel("Wybierz sygnał wejściowy:"))
+      self.filter_signals_list = QListWidget()
+      self.filter_signals_list.setFixedHeight(150)
+      left_layout.addWidget(self.filter_signals_list)
+
+      settings_box = QGroupBox("Parametry Filtru SOI (FIR)")
+      form = QFormLayout()
+
+      self.filter_m_input = QLineEdit("63")
+      self.filter_k_input = QLineEdit("8")
+
+      self.filter_window_combo = QComboBox()
+      self.filter_window_combo.addItems(["Prostokątne", "Blackmana"])
+      self.filter_type_combo = QComboBox()
+      self.filter_type_combo.addItems(["Dolnoprzepustowy", "Środkowoprzepustowy"])
+
+      form.addRow("Rząd filtru (M):", self.filter_m_input)
+      form.addRow("Parametr K (odcięcie):", self.filter_k_input)
+      form.addRow("Funkcja Okna:", self.filter_window_combo)
+      form.addRow("Typ Filtru:", self.filter_type_combo)
+
+      self.btn_design_filter = QPushButton("Zaprojektuj i Filtruj")
+      self.btn_design_filter.clicked.connect(self.perform_filtering)
+      form.addRow(self.btn_design_filter)
+
+      settings_box.setLayout(form)
+      left_layout.addWidget(settings_box)
+      layout.addWidget(left_panel)
+
+      right_panel = QWidget()
+      right_layout = QVBoxLayout(right_panel)
+
+      # Wykres odpowiedzi impulsowej
+      self.canvas_filter_h = MplCanvas(self, width=5, height=3, dpi=100)
+      # Wykres sygnału po filtracji
+      self.canvas_filter_res = MplCanvas(self, width=5, height=3, dpi=100)
+
+      right_layout.addWidget(self.canvas_filter_h)
+      right_layout.addWidget(self.canvas_filter_res)
+      layout.addWidget(right_panel)
+
+   def perform_filtering(self):
+      row = self.filter_signals_list.currentRow()
+      if row < 0:
+         QMessageBox.warning(self, "Błąd", "Wybierz sygnał z listy!")
+         return
+
+      input_signal = self.signals_history[row]
+
+      try:
+         M = int(self.filter_m_input.text().strip())
+         K = float(self.filter_k_input.text().strip())
+         if M % 2 == 0:
+            raise ValueError("Rząd filtru M musi być liczbą nieparzystą!")
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd parametrów", str(e))
+         return
+
+      # 1. Projektowanie idealnego filtru DP
+      h_filter = filters.generate_low_pass_filter(M, K, input_signal.fs)
+
+      # 2. Nakładanie okna (Wariant O3)
+      if self.filter_window_combo.currentIndex() == 1:
+         h_filter = filters.apply_blackman_window(h_filter)
+
+      # 3. Transformacja typu filtru (Wariant F1)
+      if self.filter_type_combo.currentIndex() == 1:
+         h_filter = filters.transform_to_band_pass(h_filter)
+
+      # 4. Wykonanie filtracji (splot)
+      filtered_signal = filters.filter_signal_with_fir(input_signal, h_filter)
+
+      # Opcjonalnie: Zapisanie wyniku do historii
+      self.signals_history.append(filtered_signal)
+      self.add_signal_to_lists(filtered_signal.name_override)
+
+      # --- Rysowanie Wykresu Odpowiedzi Impulsowej ---
+      self.canvas_filter_h.axes.cla()
+      # Używamy stem() dla sygnałów dyskretnych (wymóg z instrukcji, Rysunki 7 i 8)
+      self.canvas_filter_h.axes.stem(h_filter.t, h_filter.signal, basefmt=" ")
+      self.canvas_filter_h.axes.set_title(h_filter.name_override)
+      self.canvas_filter_h.axes.set_xlabel("Czas (s)")
+      self.canvas_filter_h.axes.set_ylabel("Amplituda h(n)")
+      self.canvas_filter_h.axes.grid(True)
+      self.canvas_filter_h.draw()
+
+      # --- Rysowanie Wykresu Wynikowego (Sygnał po filtracji) ---
+      self.canvas_filter_res.axes.cla()
+      self.canvas_filter_res.axes.plot(filtered_signal.t, filtered_signal.signal, 'g')
+      self.canvas_filter_res.axes.set_title("Sygnał po filtracji")
+      self.canvas_filter_res.axes.set_xlabel("Czas (s)")
+      self.canvas_filter_res.axes.set_ylabel("Amplituda")
+      self.canvas_filter_res.axes.grid(True)
+      self.canvas_filter_res.draw()
+
    def setup_radar_tab(self):
       layout = QHBoxLayout(self.tab_radar)
       left_panel = QWidget()
@@ -257,9 +368,9 @@ class MainWindow(QMainWindow):
       form.addRow("Okres raportowania [s]:", self.radar_report_input)
 
       self.radar_step_btn = QPushButton("Wykonaj krok symulacji")
-      self.radar_step_btn.clicked.connect(lambda a: a)
+      self.radar_step_btn.clicked.connect(self.perform_radar_step)
       self.radar_reset_btn = QPushButton("Resetuj symulator")
-      self.radar_reset_btn.clicked.connect(lambda a: a)
+      self.radar_reset_btn.clicked.connect(self.reset_radar)
 
       form.addRow(self.radar_step_btn)
       form.addRow(self.radar_reset_btn)
@@ -288,6 +399,79 @@ class MainWindow(QMainWindow):
 
       layout.addWidget(right_panel)
       self.radar_simulator = None
+
+   def perform_radar_step(self):
+      if self.radar_simulator is None:
+         try:
+            v = float(self.radar_v_input.text())
+            tv = float(self.radar_target_v_input.text())
+            init_d = float(self.radar_init_dist_input.text())
+            fs = float(self.radar_fs_input.text())
+            buf = int(self.radar_buffer_input.text())
+            rep = float(self.radar_report_input.text())
+
+            self.radar_simulator = RadarSimulator(v, tv, init_d, fs, buf, rep)
+            self.radar_log_display.clear()
+            self.radar_log_display.append("-- START SYMULACJI --")
+         except ValueError:
+            QMessageBox.warning(self, "Błąd", "Nieprawidłowe wartości parametrów")
+            return
+      res = self.radar_simulator.simulate_step()
+      log_text = (f"Czas: {res['time']:.2f} s\n"
+                  f"Odległość Rzeczywista: {res['actual_distance']:.2f} m\n"
+                  f"Odległość Zmierzona:   {res['measured_distance']:.2f} m\n"
+                  f"Błąd Bezwzględny:      {res['error']:.2f} m\n"
+                  f"{'-'*35}")
+      self.radar_log_display.append(log_text)
+
+      # Rysowanie - Sygnał wysłany
+      self.canvas_radar_sent.axes.cla()
+      self.canvas_radar_sent.axes.plot(res['sig_sent'].t, res['sig_sent'].signal, 'b')
+      self.canvas_radar_sent.axes.set_title("Sygnał sondujący x")
+      self.canvas_radar_sent.axes.set_ylabel("Amplituda")
+      self.canvas_radar_sent.axes.grid(True)
+      self.canvas_radar_sent.draw()
+
+      # Rysowanie - Sygnał opóźniony (Odbity)
+      self.canvas_radar_recv.axes.cla()
+      self.canvas_radar_recv.axes.plot(res['sig_recv'].t, res['sig_recv'].signal, 'g')
+      self.canvas_radar_recv.axes.set_title("Sygnał zwrotny y (opóźniony)")
+      self.canvas_radar_recv.axes.set_ylabel("Amplituda")
+      self.canvas_radar_recv.axes.grid(True)
+      self.canvas_radar_recv.draw()
+
+      # Rysowanie - Korelacja wzajemna
+      self.canvas_radar_corr.axes.cla()
+      N = self.radar_simulator.buffer_length
+      corr_sig = res['correlation'].signal
+
+      # Przesunięcie osi X dla korelacji, by środek był zerem (-N+1 do N-1)
+      corr_t = np.arange(len(corr_sig)) - (N - 1)
+
+      self.canvas_radar_corr.axes.plot(corr_t, corr_sig, 'k')
+      self.canvas_radar_corr.axes.set_title("Korelacja sygnałów y oraz x")
+      self.canvas_radar_corr.axes.set_xlabel("Przesunięcie (w próbkach)")
+
+      # Odnajdywanie i zaznaczanie pierwszego maksimum po prawej stronie
+      right_half = corr_sig[N - 1:]
+      max_idx = np.argmax(right_half) + N - 1
+
+      self.canvas_radar_corr.axes.plot(corr_t[max_idx], corr_sig[max_idx], 'ro', markersize=6,
+                                       label="Maksimum (Odl. z opóźnienia)")
+      self.canvas_radar_corr.axes.legend()
+      self.canvas_radar_corr.axes.grid(True)
+      self.canvas_radar_corr.draw()
+
+   def reset_radar(self):
+      self.radar_simulator = None
+      self.radar_log_display.clear()
+      self.canvas_radar_sent.axes.cla()
+      self.canvas_radar_sent.draw()
+      self.canvas_radar_recv.axes.cla()
+      self.canvas_radar_recv.draw()
+      self.canvas_radar_corr.axes.cla()
+      self.canvas_radar_corr.draw()
+      self.radar_log_display.append("Zresetowano symulator. Zmień parametry i kliknij 'Wykonaj Krok'.")
 
    def perform_conversion(self):
       row = self.signals_list_widget.currentRow()
@@ -639,6 +823,8 @@ class MainWindow(QMainWindow):
       deleted_signal = self.signals_history.pop(row)
       self.signals_list_widget.takeItem(row)
       self.conversion_signals_list.takeItem(row)
+      if hasattr(self, 'filter_signals_list'):
+         self.filter_signals_list.takeItem(row)
 
       if self.signal1 == deleted_signal:
          self.signal1 = None
@@ -671,4 +857,6 @@ class MainWindow(QMainWindow):
          text = f"#{i+1} - {signal_name}"
          current_item.setText(text)
          current_item_conv.setText(text)
+         if hasattr(self, 'filter_signals_list'):
+            self.filter_signals_list.item(i).setText(text)
 
