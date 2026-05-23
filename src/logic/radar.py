@@ -5,7 +5,7 @@ from src.logic.operations import correlate_signals_convolution
 
 
 class RadarSimulator:
-   def __init__(self, signal_speed=300.0, target_speed=10.0, initial_distance=50.0, fs=1000.0, buffer_length=500, reporting_period=0.5):
+   def __init__(self, signal_speed=300.0, target_speed=10.0, initial_distance=50.0, fs=1000.0, buffer_length=500, reporting_period=0.5, custom_signal=None):
       # Parametry środowiska
       self.V = signal_speed
       self.target_speed = target_speed
@@ -14,6 +14,7 @@ class RadarSimulator:
       self.fs = fs
       self.buffer_length = buffer_length
       self.reporting_period = reporting_period
+      self.custom_signal = custom_signal
       # Zegar symulacji
       self.current_time = 0.0
 
@@ -22,9 +23,19 @@ class RadarSimulator:
       f2 = 5.0
       return np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
 
+   def _evaluate_signal(self, t):
+      if self.custom_signal is None:
+         return self.generate_composite_signal(t)
+      else:
+         # Używamy znormalizowanej osi x do interpolacji (od 0 do d)
+         t_mod = t % self.custom_signal.d
+         xp = self.custom_signal.t - self.custom_signal.t1
+         fp = self.custom_signal.signal
+         return np.interp(t_mod, xp, fp)
+
    def generate_sounding_signal(self):
       t = self.current_time + np.arange(self.buffer_length) / self.fs
-      sig_values = self.generate_composite_signal(t)
+      sig_values = self._evaluate_signal(t)
       sig = Signal(A=1.5, d=self.buffer_length/self.fs, fs=self.fs, t1=self.current_time, t=t, signal=sig_values)
       sig.name_override = "Sygnał sondujący (wysłany)"
       return sig
@@ -32,7 +43,7 @@ class RadarSimulator:
    def generate_reflected_signal(self, delay):
       t = self.current_time + np.arange(self.buffer_length) / self.fs
       t_delayed = t - delay
-      sig_values = self.generate_composite_signal(t_delayed)
+      sig_values = self._evaluate_signal(t_delayed)
       sig = Signal(A=1.5, d=self.buffer_length/self.fs, fs=self.fs, t1=self.current_time, t=t, signal=sig_values)
       sig.name_override = "Sygnał zwrotny (odebrany)"
       return sig
