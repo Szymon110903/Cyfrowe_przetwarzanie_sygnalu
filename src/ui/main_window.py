@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
             uniform_noise, gaussian_noise, sinusoidal_signal,
             sinusoidal_signal_onehalf_rectified, sinusoidal_signal_twohalf_rectified,
             square_wave_signal, square_wave_signal_symetrical, triangle_wave_signal,
-            unit_step_signal, unit_impulse_signal, impulse_noise
+            unit_step_signal, unit_impulse_signal, impulse_noise, S3_signal
         ]
       self.create_tabs()
 
@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
 
    def setup_operations_tab(self):
       names = ["Sygnał o rozkładzie jednostajnym", "Sygnał o rozkładzie normalnym", "Sygnał sinusoidalny", "Sygnał sinusoidalny z dodatnią częścią", "Sygnał sinusoidalny z dodatnią częścią prostowaną", "Sygnał prostokątny",
-               "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy"]
+               "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy", "Sygnał testowy S3"]
 
       tab1_layout = QHBoxLayout(self.tab_operations)
       # Lewy panel dla ustawień parametrów sygnałow, historii sygnałów oraz operacji i ich wyników
