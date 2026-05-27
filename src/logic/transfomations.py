@@ -1,4 +1,5 @@
 import numpy as np
+from src.logic.operations import custom_convolution
 import time
 
 # DFT F-1 z instrukcji
@@ -40,3 +41,20 @@ def fft_dit(x):
       step *= 2
    return X/N
 
+# Przekształcenie falkowe rzędu czwartego
+def wavelet_transform(x):
+   h0 = (1 + np.sqrt(3)) / (4*np.sqrt(2))
+   h1 = (3 + np.sqrt(3)) / (4*np.sqrt(2))
+   h2 = (3 - np.sqrt(3)) / (4*np.sqrt(2))
+   h3 = (1 - np.sqrt(3)) / (4*np.sqrt(2))
+   H = np.array([h0, h1, h2, h3])
+   G = np.array([h3, -h2, h1, -h0])
+   xh = custom_convolution(x, H)
+   xg = custom_convolution(x, G)
+   return xh[0::2], xg[1::2]
+
+def measure_transform_time(func, x):
+   start_time = time.perf_counter()
+   result = func(x)
+   end_time = time.perf_counter()
+   return result, end_time - start_time
