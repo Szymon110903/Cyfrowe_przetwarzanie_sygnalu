@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QFormLayout, QLineEdit, \
    QComboBox, QPushButton, QMessageBox, QFileDialog, QListWidget, QGridLayout, QMenu, QTabWidget
 from PySide6.QtCore import Qt
@@ -11,6 +13,8 @@ import src.logic.operations as operations
 import src.logic.conversion as conversion
 import src.logic.metrics as metrics
 import src.logic.filters as filters
+import src.logic.transformations as transformations
+import time
 from PySide6.QtWidgets import QTextEdit 
 
 class MainWindow(QMainWindow):
@@ -29,7 +33,7 @@ class MainWindow(QMainWindow):
             uniform_noise, gaussian_noise, sinusoidal_signal,
             sinusoidal_signal_onehalf_rectified, sinusoidal_signal_twohalf_rectified,
             square_wave_signal, square_wave_signal_symetrical, triangle_wave_signal,
-            unit_step_signal, unit_impulse_signal, impulse_noise, S3_signal
+            unit_step_signal, unit_impulse_signal, impulse_noise, S3_signal, exponential_signal
         ]
       self.create_tabs()
 
@@ -54,6 +58,10 @@ class MainWindow(QMainWindow):
       self.setup_radar_tab()
       self.tabs.addTab(self.tab_radar, "Radar")
 
+      self.tab_transformations = QWidget()
+      self.setup_transformations_tab()
+      self.tabs.addTab(self.tab_transformations, "Transformacje")
+
       self.signals_list_widget.currentRowChanged.connect(self.sync_lists)
       self.conversion_signals_list.currentRowChanged.connect(self.sync_lists)
       self.filter_signals_list.currentRowChanged.connect(self.sync_lists)
@@ -71,6 +79,8 @@ class MainWindow(QMainWindow):
          self.splot_signals_list.setCurrentRow(row)
       if hasattr(self, 'radar_signals_list') and self.radar_signals_list.currentRow() != row:
          self.radar_signals_list.setCurrentRow(row)
+      if hasattr(self, 'transform_signals_list') and self.transform_signals_list.currentRow() != row:
+         self.transform_signals_list.setCurrentRow(row)
 
    def add_signal_to_lists(self, signal_name):
       display_text = f"#{len(self.signals_history)} - {signal_name}"
@@ -82,11 +92,13 @@ class MainWindow(QMainWindow):
          self.splot_signals_list.addItem(display_text)
       if hasattr(self, 'radar_signals_list'):
          self.radar_signals_list.addItem(display_text)
+      if hasattr(self, 'transform_signals_list'):
+         self.transform_signals_list.addItem(display_text)
       self.signals_list_widget.setCurrentRow(len(self.signals_history) - 1)
 
    def setup_operations_tab(self):
       names = ["Sygnał o rozkładzie jednostajnym", "Sygnał o rozkładzie normalnym", "Sygnał sinusoidalny", "Sygnał sinusoidalny z dodatnią częścią", "Sygnał sinusoidalny z dodatnią częścią prostowaną", "Sygnał prostokątny",
-               "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy", "Sygnał testowy S3"]
+               "Sygnał prostokątny symetryczny", "Sygnał trójkątny", "Sygnał skok jednostkowy", "Impuls jednostkowy", "Szum impulsowy", "Sygnał testowy S3", "Sygnał wykładniczy"]
 
       tab1_layout = QHBoxLayout(self.tab_operations)
       # Lewy panel dla ustawień parametrów sygnałow, historii sygnałów oraz operacji i ich wyników
@@ -547,6 +559,118 @@ class MainWindow(QMainWindow):
       self.radar_simulator = None
       self.radar_custom_signal = None
 
+   def setup_transformations_tab(self):
+      layout = QHBoxLayout(self.tab_transformations)
+      left_panel = QWidget()
+      left_panel.setFixedWidth(350)
+      left_layout = QVBoxLayout(left_panel)
+      left_layout.addWidget(QLabel("Wybierz sygnał:"))
+      self.transform_signals_list = QListWidget()
+      left_layout.addWidget(self.transform_signals_list)
+
+      settings_box = QGroupBox("Parametry transformacji")
+      form = QFormLayout()
+
+      self.transform_type_combo = QComboBox()
+      self.transform_type_combo.addItems(["DFT", "FFT", "Falkowa"])
+      self.transform_view_combo = QComboBox()
+      self.transform_view_combo.addItems(["W1", "W2"])
+      self.transform_type_combo.currentIndexChanged.connect(
+         lambda idx: self.transform_view_combo.setEnabled(idx != 2)
+      )
+
+      form.addRow("Typ transformacji: ", self.transform_type_combo)
+      form.addRow("Tryb wykresu: ", self.transform_view_combo)
+      self.btn_transform = QPushButton("Wykonaj transformację")
+      self.btn_transform.clicked.connect(self.perform_transformation)
+      form.addRow(self.btn_transform)
+
+      settings_box.setLayout(form)
+      left_layout.addWidget(settings_box)
+      left_layout.addWidget(QLabel("Czas wykonania algorytmu:"))
+      self.transform_time_display = QTextEdit()
+      self.transform_time_display.setReadOnly(True)
+      self.transform_time_display.setFixedWidth(350)
+      left_layout.addWidget(self.transform_time_display)
+
+      layout.addWidget(left_panel)
+
+      # Prawy panel
+      right_panel = QWidget()
+      right_layout = QVBoxLayout(right_panel)
+      self.canvas_trans_top = MplCanvas(self, width=5, height=3, dpi=100)
+      self.canvas_trans_bottom = MplCanvas(self, width=5, height=3, dpi=100)
+      right_layout.addWidget(self.canvas_trans_top)
+      right_layout.addWidget(self.canvas_trans_bottom)
+      layout.addWidget(right_panel)
+
+   def perform_transformation(self):
+      row = self.transform_signals_list.currentRow()
+      if row < 0:
+         QMessageBox.warning(self, "Błąd", "Wybierz sygnał z listy")
+         return
+
+      signal = self.signals_history[row]
+      t_type = self.transform_type_combo.currentIndex()
+      try:
+         if t_type == 0:
+            result_val, t_time = transformations.measure_transform_time(transformations.dft, signal.signal)
+            self.draw_fourier_charts(result_val, signal.fs)
+         elif t_type == 1:
+            result_val, t_time = transformations.measure_transform_time(transformations.fft_dit, signal.signal)
+            self.draw_fourier_charts(result_val, signal.fs)
+         elif t_type == 2:
+            (x1, x2), t_time = transformations.measure_transform_time(transformations.wavelet_transform, signal.signal)
+            self.draw_wavelet_charts(x1, x2)
+
+         self.transform_time_display.setText(f"{t_time:.6f} s")
+      except ValueError as e:
+         QMessageBox.warning(self, "Błąd algorytmu", str(e))
+      except Exception as e:
+         QMessageBox.warning(self, "Błąd", f"Błąd transformacji:\n{str(e)}")
+
+   def draw_fourier_charts(self, X, fs):
+      N = len(X)
+      freqs = np.arange(N) * (fs / N)
+      view_mode = self.transform_view_combo.currentIndex()
+      self.canvas_trans_top.axes.cla()
+      self.canvas_trans_bottom.axes.cla()
+
+      if view_mode == 0:
+         # self.canvas_trans_top.axes.stem(freqs, np.real(X), basefmt=" ")
+         self.canvas_trans_top.axes.plot(np.real(X))
+         self.canvas_trans_top.axes.set_title("Część rzeczywista")
+         # self.canvas_trans_bottom.axes.stem(freqs, np.imag(X), basefmt=" ")
+         self.canvas_trans_bottom.axes.plot(np.imag(X))
+         self.canvas_trans_bottom.axes.set_title("Część urojona")
+      else:
+         # self.canvas_trans_top.axes.stem(freqs, np.abs(X), basefmt=" ")
+         self.canvas_trans_top.axes.plot(np.abs(X))
+         self.canvas_trans_top.axes.set_title("Moduł")
+         # self.canvas_trans_bottom.axes.stem(freqs, np.angle(X), basefmt=" ")
+         self.canvas_trans_bottom.axes.plot(np.angle(X))
+         self.canvas_trans_bottom.axes.set_title("Argument")
+      for canvas in [self.canvas_trans_top, self.canvas_trans_bottom]:
+         canvas.axes.set_xlabel("Częstotliwość [Hz]")
+         canvas.axes.set_ylabel("Wartość")
+         canvas.axes.grid(True)
+         canvas.draw()
+
+   def draw_wavelet_charts(self, approx, details):
+      self.canvas_trans_top.axes.cla()
+      self.canvas_trans_bottom.axes.cla()
+
+      self.canvas_trans_top.axes.stem(np.arange(len(approx)), approx, basefmt=" ")
+      self.canvas_trans_top.axes.set_title("Aproksymacja")
+      self.canvas_trans_bottom.axes.stem(np.arange(len(details)), details, basefmt=" ")
+      self.canvas_trans_bottom.axes.set_title("Detale")
+
+      for canvas in [self.canvas_trans_top, self.canvas_trans_bottom]:
+         canvas.axes.set_xlabel("Numer próbki po decymacji")
+         canvas.axes.set_ylabel("Wartość")
+         canvas.axes.grid(True)
+         canvas.draw()
+
    def set_radar_custom_signal(self):
       row = self.radar_signals_list.currentRow()
       if row < 0: return
@@ -738,7 +862,6 @@ class MainWindow(QMainWindow):
       except Exception as e:
          QMessageBox.critical(self, "Błąd", f"Wystąpił błąd podczas generowania sygnału:\n{str(e)}")
 
-## DO zastanowienia czy nie lepiej w przyszlosci nazwe pliku oprzecz o parametry sygnalu aby latwiej sie do niego potem dostac w folderze
    def save_signal(self):
       row = self.signals_list_widget.currentRow()
       if row < 0:
@@ -1012,6 +1135,8 @@ class MainWindow(QMainWindow):
          self.splot_signals_list.takeItem(row)
       if hasattr(self, 'radar_signals_list'):
          self.radar_signals_list.takeItem(row)
+      if hasattr(self, 'transform_signals_list'):
+         self.transform_signals_list.takeItem(row)
 
       if self.radar_custom_signal == deleted_signal:
          self.reset_radar_custom_signal()
@@ -1053,4 +1178,5 @@ class MainWindow(QMainWindow):
             self.splot_signals_list.item(i).setText(text)
          if hasattr(self, 'radar_signals_list'):
             self.radar_signals_list.item(i).setText(text)
-
+         if hasattr(self, 'transform_signals_list'):
+            self.transform_signals_list.item(i).setText(text)

@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.logic.transfomations import dft, fft_dit
+from src.logic.transformations import dft, fft_dit
 
 
 class TestDFT(unittest.TestCase):

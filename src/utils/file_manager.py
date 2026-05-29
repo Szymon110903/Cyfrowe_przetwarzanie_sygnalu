@@ -20,7 +20,8 @@ ID_TO_FUNC = {
     9: unit_step_signal,
     10: unit_impulse_signal,
     11: impulse_noise,
-    12: S3_signal
+    12: S3_signal,
+    13: exponential_signal
 }
 # wymiana numeru i nazwy funkcji miejscami - obsługa mapowania w obie strony - przy zapisie i odczycie sygnału
 FUNC_TO_ID = {v: k for k, v in ID_TO_FUNC.items()}

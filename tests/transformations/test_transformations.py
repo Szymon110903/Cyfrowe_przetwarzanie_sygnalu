@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.logic.transfomations import reverse_bits
+from src.logic.transformations import reverse_bits
 
 class TestTransformations(unittest.TestCase):
 

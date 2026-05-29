@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.logic.transfomations import wavelet_transform
+from src.logic.transformations import wavelet_transform
 
 class TestWaveletTransform(unittest.TestCase):
    def test_wavelet_lengths(self):
