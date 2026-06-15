@@ -67,6 +67,7 @@ class MainWindow(QMainWindow):
       self.filter_signals_list.currentRowChanged.connect(self.sync_lists)
       self.splot_signals_list.currentRowChanged.connect(self.sync_lists)
       self.radar_signals_list.currentRowChanged.connect(self.sync_lists)
+      self.transform_signals_list.currentRowChanged.connect(self.sync_lists)
 
    def sync_lists(self, row):
       if self.signals_list_widget.currentRow() != row:
@@ -572,12 +573,11 @@ class MainWindow(QMainWindow):
       form = QFormLayout()
 
       self.transform_type_combo = QComboBox()
-      self.transform_type_combo.addItems(["DFT", "FFT", "Falkowa"])
+      self.transform_type_combo.addItems(["DFT", "FFT", "IDFT", "IFFT", "Falkowa", "Odwrotna falkowa", "Wyswietl widmo"])
       self.transform_view_combo = QComboBox()
       self.transform_view_combo.addItems(["W1", "W2"])
-      self.transform_type_combo.currentIndexChanged.connect(
-         lambda idx: self.transform_view_combo.setEnabled(idx != 2)
-      )
+      self.transform_type_combo.currentIndexChanged.connect(self.update_transform_view_enabled)
+      self.update_transform_view_enabled()
 
       form.addRow("Typ transformacji: ", self.transform_type_combo)
       form.addRow("Tryb wykresu: ", self.transform_view_combo)
@@ -616,12 +616,117 @@ class MainWindow(QMainWindow):
          if t_type == 0:
             result_val, t_time = transformations.measure_transform_time(transformations.dft, signal.signal)
             self.draw_fourier_charts(result_val, signal.fs)
+            result_signal = Signal(
+               A=signal.A,
+               d=signal.d,
+               fs=signal.fs,
+               t1=signal.t1,
+               t=np.arange(len(result_val)) / signal.fs,
+               signal=result_val
+            )
+            result_signal.name_override = f"DFT({self.get_sig_name(signal)})"
+            result_signal.transform_plots_info = { 'type': 'fourier', 'X': result_val, 'fs': signal.fs }
+            self.signals_history.append(result_signal)
+            self.add_signal_to_lists(result_signal.name_override)
          elif t_type == 1:
             result_val, t_time = transformations.measure_transform_time(transformations.fft_dit, signal.signal)
             self.draw_fourier_charts(result_val, signal.fs)
+            result_signal = Signal(
+               A=signal.A,
+               d=signal.d,
+               fs=signal.fs,
+               t1=signal.t1,
+               t=np.arange(len(result_val)) / signal.fs,
+               signal=result_val
+            )
+            result_signal.name_override = f"FFT({self.get_sig_name(signal)})"
+            result_signal.transform_plots_info = { 'type': 'fourier', 'X': result_val, 'fs': signal.fs }
+            self.signals_history.append(result_signal)
+            self.add_signal_to_lists(result_signal.name_override)
          elif t_type == 2:
+            result_val, t_time = transformations.measure_transform_time(transformations.idft, signal.signal)
+            self.draw_time_charts(result_val, signal.fs)
+            result_signal = Signal(
+               A=signal.A,
+               d=signal.d,
+               fs=signal.fs,
+               t1=signal.t1,
+               t=np.arange(len(result_val)) / signal.fs,
+               signal=result_val
+            )
+            result_signal.name_override = f"IDFT({self.get_sig_name(signal)})"
+            result_signal.transform_plots_info = { 'type': 'time', 'x': result_val, 'fs': signal.fs }
+            self.signals_history.append(result_signal)
+            self.add_signal_to_lists(result_signal.name_override)
+         elif t_type == 3:
+            result_val, t_time = transformations.measure_transform_time(transformations.ifft_dit, signal.signal)
+            self.draw_time_charts(result_val, signal.fs)
+            result_signal = Signal(
+               A=signal.A,
+               d=signal.d,
+               fs=signal.fs,
+               t1=signal.t1,
+               t=np.arange(len(result_val)) / signal.fs,
+               signal=result_val
+            )
+            result_signal.name_override = f"IFFT({self.get_sig_name(signal)})"
+            result_signal.transform_plots_info = { 'type': 'time', 'x': result_val, 'fs': signal.fs }
+            self.signals_history.append(result_signal)
+            self.add_signal_to_lists(result_signal.name_override)
+         elif t_type == 4:
             (x1, x2), t_time = transformations.measure_transform_time(transformations.wavelet_transform, signal.signal)
             self.draw_wavelet_charts(x1, x2)
+            new_fs = (signal.fs / 2) if signal.fs else 1
+            result_signal = Signal(
+               A=signal.A,
+               d=signal.d,
+               fs=new_fs,
+               t1=signal.t1,
+               t=np.arange(len(x1)) / new_fs,
+               signal=x1
+            )
+            result_signal.name_override = f"Falkowa({self.get_sig_name(signal)})"
+            result_signal.transform_plots_info = {
+                'type': 'wavelet',
+                'approx': x1,
+                'details': x2,
+                'original_length': len(signal.signal),
+                'original_fs': signal.fs
+            }
+            self.signals_history.append(result_signal)
+            self.add_signal_to_lists(result_signal.name_override)
+         elif t_type == 5:
+            # Odwrotna falkowa
+            if not hasattr(signal, 'transform_plots_info') or signal.transform_plots_info.get('type') != 'wavelet':
+                QMessageBox.warning(self, "Błąd", "Wybierz sygnał będący transformacją falkową (posiadający aproksymację i detale).")
+                return
+            info = signal.transform_plots_info
+            x1 = info['approx']
+            x2 = info['details']
+            N = info.get('original_length')
+            orig_fs = info.get('original_fs', signal.fs * 2)
+
+            result_val, t_time = transformations.measure_transform_time(
+                lambda _: transformations.inverse_wavelet_transform(x1, x2, N),
+                None
+            )
+            self.draw_time_charts(result_val, orig_fs)
+            result_signal = Signal(
+                A=signal.A,
+                d=signal.d,
+                fs=orig_fs,
+                t1=signal.t1,
+                t=np.arange(len(result_val)) / orig_fs,
+                signal=result_val
+            )
+            result_signal.name_override = f"Odwrotna Falkowa({self.get_sig_name(signal)})"
+            result_signal.transform_plots_info = { 'type': 'time', 'x': result_val, 'fs': orig_fs }
+            self.signals_history.append(result_signal)
+            self.add_signal_to_lists(result_signal.name_override)
+         elif t_type == 6:
+            self.draw_fourier_charts(signal.signal, signal.fs)
+            signal.transform_plots_info = { 'type': 'fourier', 'X': signal.signal, 'fs': signal.fs }
+            t_time = 0
 
          self.transform_time_display.setText(f"{t_time:.6f} s")
       except ValueError as e:
@@ -638,20 +743,44 @@ class MainWindow(QMainWindow):
 
       if view_mode == 0:
          # self.canvas_trans_top.axes.stem(freqs, np.real(X), basefmt=" ")
-         self.canvas_trans_top.axes.plot(np.real(X))
+         self.canvas_trans_top.axes.plot(freqs, np.real(X))
          self.canvas_trans_top.axes.set_title("Część rzeczywista")
          # self.canvas_trans_bottom.axes.stem(freqs, np.imag(X), basefmt=" ")
-         self.canvas_trans_bottom.axes.plot(np.imag(X))
+         self.canvas_trans_bottom.axes.plot(freqs, np.imag(X))
          self.canvas_trans_bottom.axes.set_title("Część urojona")
       else:
          # self.canvas_trans_top.axes.stem(freqs, np.abs(X), basefmt=" ")
-         self.canvas_trans_top.axes.plot(np.abs(X))
+         self.canvas_trans_top.axes.plot(freqs, np.abs(X))
          self.canvas_trans_top.axes.set_title("Moduł")
          # self.canvas_trans_bottom.axes.stem(freqs, np.angle(X), basefmt=" ")
-         self.canvas_trans_bottom.axes.plot(np.angle(X))
+         self.canvas_trans_bottom.axes.plot(freqs, np.angle(X))
          self.canvas_trans_bottom.axes.set_title("Argument")
       for canvas in [self.canvas_trans_top, self.canvas_trans_bottom]:
          canvas.axes.set_xlabel("Częstotliwość [Hz]")
+         canvas.axes.set_ylabel("Wartość")
+         canvas.axes.grid(True)
+         canvas.draw()
+
+   def draw_time_charts(self, x, fs):
+      N = len(x)
+      t = np.arange(N) / fs
+      view_mode = self.transform_view_combo.currentIndex()
+      self.canvas_trans_top.axes.cla()
+      self.canvas_trans_bottom.axes.cla()
+
+      if view_mode == 0:
+         self.canvas_trans_top.axes.plot(t, np.real(x))
+         self.canvas_trans_top.axes.set_title("Część rzeczywista")
+         self.canvas_trans_bottom.axes.plot(t, np.imag(x))
+         self.canvas_trans_bottom.axes.set_title("Część urojona")
+      else:
+         self.canvas_trans_top.axes.plot(t, np.abs(x))
+         self.canvas_trans_top.axes.set_title("Moduł")
+         self.canvas_trans_bottom.axes.plot(t, np.angle(x))
+         self.canvas_trans_bottom.axes.set_title("Argument")
+
+      for canvas in [self.canvas_trans_top, self.canvas_trans_bottom]:
+         canvas.axes.set_xlabel("Czas [s]")
          canvas.axes.set_ylabel("Wartość")
          canvas.axes.grid(True)
          canvas.draw()
@@ -660,9 +789,9 @@ class MainWindow(QMainWindow):
       self.canvas_trans_top.axes.cla()
       self.canvas_trans_bottom.axes.cla()
 
-      self.canvas_trans_top.axes.stem(np.arange(len(approx)), approx, basefmt=" ")
+      self.canvas_trans_top.axes.plot(np.arange(len(approx)), approx)
       self.canvas_trans_top.axes.set_title("Aproksymacja")
-      self.canvas_trans_bottom.axes.stem(np.arange(len(details)), details, basefmt=" ")
+      self.canvas_trans_bottom.axes.plot(np.arange(len(details)), details)
       self.canvas_trans_bottom.axes.set_title("Detale")
 
       for canvas in [self.canvas_trans_top, self.canvas_trans_bottom]:
@@ -670,6 +799,9 @@ class MainWindow(QMainWindow):
          canvas.axes.set_ylabel("Wartość")
          canvas.axes.grid(True)
          canvas.draw()
+
+   def update_transform_view_enabled(self):
+      self.transform_view_combo.setEnabled(self.transform_type_combo.currentText() != "Falkowa")
 
    def set_radar_custom_signal(self):
       row = self.radar_signals_list.currentRow()
@@ -909,9 +1041,16 @@ class MainWindow(QMainWindow):
 
    def on_signal_selected(self, row):
       if row < 0 or row >= len(self.signals_history):
-         if len(self.signals_history) == 0 and hasattr(self, 'canvas_filter_input'):
-            self.canvas_filter_input.axes.cla()
-            self.canvas_filter_input.draw()
+         if len(self.signals_history) == 0:
+            if hasattr(self, 'canvas_filter_input'):
+               self.canvas_filter_input.axes.cla()
+               self.canvas_filter_input.draw()
+            if hasattr(self, 'canvas_trans_top'):
+               self.canvas_trans_top.axes.cla()
+               self.canvas_trans_top.draw()
+            if hasattr(self, 'canvas_trans_bottom'):
+               self.canvas_trans_bottom.axes.cla()
+               self.canvas_trans_bottom.draw()
          return
 
       selected_signal = self.signals_history[row]
@@ -937,6 +1076,44 @@ class MainWindow(QMainWindow):
       if hasattr(self, 'canvas_filter_input'):
          self.update_filter_input_plot(selected_signal, row)
 
+      if hasattr(self, 'canvas_trans_top'):
+         self.update_transformations_plots(selected_signal)
+
+   def update_transformations_plots(self, signal):
+      if not signal or not hasattr(self, 'canvas_trans_top') or not hasattr(self, 'canvas_trans_bottom'):
+         return
+
+      if hasattr(signal, 'transform_plots_info'):
+         info = signal.transform_plots_info
+         if info['type'] == 'fourier':
+            self.draw_fourier_charts(info['X'], info['fs'])
+         elif info['type'] == 'time':
+            self.draw_time_charts(info['x'], info['fs'])
+         elif info['type'] == 'wavelet':
+            self.draw_wavelet_charts(info['approx'], info['details'])
+      else:
+         # Standardowy sygnał
+         if np.iscomplexobj(signal.signal):
+            self.draw_fourier_charts(signal.signal, signal.fs)
+         else:
+            # Rysowanie przebiegu czasowego na górnym wykresie
+            self.canvas_trans_top.axes.cla()
+            discrete_signals = [unit_impulse_signal, impulse_noise]
+            if signal.function in discrete_signals:
+               self.canvas_trans_top.axes.stem(signal.t, signal.signal, basefmt=" ")
+            else:
+               self.canvas_trans_top.axes.plot(signal.t, signal.signal)
+            self.canvas_trans_top.axes.set_title(self.get_sig_name(signal))
+            self.canvas_trans_top.axes.set_xlabel("Czas [s]")
+            self.canvas_trans_top.axes.set_ylabel("Amplituda")
+            self.canvas_trans_top.axes.grid(True)
+            self.canvas_trans_top.draw()
+
+            # Wyczyszczenie dolnego wykresu
+            self.canvas_trans_bottom.axes.cla()
+            self.canvas_trans_bottom.axes.set_title("Brak transformacji (wybierz typ i kliknij 'Wykonaj transformację')")
+            self.canvas_trans_bottom.draw()
+
    def update_filter_input_plot(self, signal, list_index):
       if not signal or not hasattr(self, 'canvas_filter_input'):
          return
@@ -945,10 +1122,11 @@ class MainWindow(QMainWindow):
       
       discrete_signals = [unit_impulse_signal, impulse_noise]
 
+      sig_to_plot = np.real(signal.signal) if np.iscomplexobj(signal.signal) else signal.signal
       if signal.function in discrete_signals:
-         self.canvas_filter_input.axes.stem(signal.t, signal.signal, basefmt=" ")
+         self.canvas_filter_input.axes.stem(signal.t, sig_to_plot, basefmt=" ")
       else:
-         self.canvas_filter_input.axes.plot(signal.t, signal.signal)
+         self.canvas_filter_input.axes.plot(signal.t, sig_to_plot)
 
       self.canvas_filter_input.axes.set_title(f"Wybrany sygnał wejściowy: {signal_name} #{list_index+1}")
       self.canvas_filter_input.axes.set_xlabel("Czas (s)")
@@ -969,50 +1147,53 @@ class MainWindow(QMainWindow):
       self.update_single_plot(self.signal2, self.canvas_sig2, self.canvas_hist2, row)
 
    def update_single_plot(self, signal, canvas_sig, canvas_hist, list_index):
-    if not signal:
-        return
-    signal_name = self.get_sig_name(signal)
-    canvas_sig.axes.cla()
-    
-    discrete_signals = [unit_impulse_signal, impulse_noise]
+      if not signal:
+         return
+      signal_name = self.get_sig_name(signal)
+      canvas_sig.axes.cla()
+      
+      discrete_signals = [unit_impulse_signal, impulse_noise]
 
-    if signal.function in discrete_signals:
-        canvas_sig.axes.stem(signal.t, signal.signal, basefmt=" ")
-    else:
-        canvas_sig.axes.plot(signal.t, signal.signal)
+      sig_to_plot = np.real(signal.signal) if np.iscomplexobj(signal.signal) else signal.signal
+      if signal.function in discrete_signals:
+         canvas_sig.axes.stem(signal.t, sig_to_plot, basefmt=" ")
+      else:
+         canvas_sig.axes.plot(signal.t, sig_to_plot)
 
-    canvas_sig.axes.set_title(f"{signal_name} #{list_index+1}")
-    canvas_sig.axes.set_xlabel("Czas (s)")
-    canvas_sig.axes.set_ylabel("Amplituda")
-    canvas_sig.axes.grid(True)
-    canvas_sig.draw()
+      canvas_sig.axes.set_title(f"{signal_name} #{list_index+1}")
+      canvas_sig.axes.set_xlabel("Czas (s)")
+      canvas_sig.axes.set_ylabel("Amplituda")
+      canvas_sig.axes.grid(True)
+      canvas_sig.draw()
 
-    canvas_hist.axes.cla()
-    signal_values = signal.get_full_periods()
-    
-    try:
-        bins = int(self.get_input_value(self.bins))
-    except (ValueError, TypeError):
-        bins = 10  
+      canvas_hist.axes.cla()
+      signal_values = signal.get_full_periods()
+      if np.iscomplexobj(signal_values):
+         signal_values = np.real(signal_values)
+      
+      try:
+         bins = int(self.get_input_value(self.bins))
+      except (ValueError, TypeError):
+         bins = 10  
 
-    canvas_hist.axes.hist(signal_values, bins=bins, edgecolor='black', alpha=0.7)
-    canvas_hist.axes.set_title(f"Histogram")
-    canvas_hist.axes.set_xlabel("Wartość Amplitudy")
-    canvas_hist.axes.set_ylabel("Liczba wystąpień")
-    canvas_hist.axes.grid(axis='y', linestyle='--', alpha=0.7)
-    canvas_hist.draw()
+      canvas_hist.axes.hist(signal_values, bins=bins, edgecolor='black', alpha=0.7)
+      canvas_hist.axes.set_title(f"Histogram")
+      canvas_hist.axes.set_xlabel("Wartość Amplitudy")
+      canvas_hist.axes.set_ylabel("Liczba wystąpień")
+      canvas_hist.axes.grid(axis='y', linestyle='--', alpha=0.7)
+      canvas_hist.draw()
 
-    params = signal.calculate_parameters()
-    
-    if params and hasattr(self, 'params_display'):
-        text = f"PARAMETRY STATYSTYCZNE SYGNAŁU #{list_index + 1}\n"
-        text += f"Nazwa: {signal_name}\n"
-        text += "=" * 35 + "\n"
-        
-        for key, value in params.items():
+      params = signal.calculate_parameters()
+      
+      if params and hasattr(self, 'params_display'):
+         text = f"PARAMETRY STATYSTYCZNE SYGNAŁU #{list_index + 1}\n"
+         text += f"Nazwa: {signal_name}\n"
+         text += "=" * 35 + "\n"
+         
+         for key, value in params.items():
             text += f"{key:<28}: {value:.4f}\n"
-        
-        self.params_display.setText(text)
+         
+         self.params_display.setText(text)
 
    def add_selected_signals(self):
       if self.signal1 is None or self.signal2 is None:
