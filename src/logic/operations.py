@@ -132,6 +132,17 @@ def convolution(discrete1 , discrete2):
 
    return new_signal
 
+def custom_convolution(x, h):
+   M = len(h)
+   N = len(x)
+   new_length = M + N - 1
+   result = np.zeros(new_length)
+   for n in range(new_length):
+      for k in range(M):
+         if 0 <= n-k < N:
+            result[n] += h[k] * x[n-k]
+   return result
+
 def correlate_signals_direct(signal_h, signal_x):
    h = signal_h.signal
    x = signal_x.signal

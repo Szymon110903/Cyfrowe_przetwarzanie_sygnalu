@@ -68,7 +68,9 @@ class Signal:
             triangle_wave_signal: "Sygnał trójkątny",
             unit_step_signal: "Sygnał skok jednostkowy",
             unit_impulse_signal: "Impuls jednostkowy",
-            impulse_noise: "Szum impulsowy"
+            impulse_noise: "Szum impulsowy",
+            S3_signal: "Sygnał testowy S3",
+            exponential_signal: "Sygnał wykładniczy"
         }
         return names.get(self.function)
 
